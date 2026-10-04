@@ -5,6 +5,65 @@ let cleanup: (() => void) | undefined;
 afterEach(() => { cleanup?.(); vi.useRealTimers(); });
 
 describe("background source discovery", () => {
+	it("retries an empty addon failure and resumes polling the background search", async () => {
+		vi.useFakeTimers();
+		let current = $state({ pending: false, streams: [] as unknown[], errors: [{ message: "Addon timed out" }] });
+		const refresh = vi.fn(async () => {
+			current = refresh.mock.calls.length === 1
+				? { pending: true, streams: [], errors: [] }
+				: { pending: false, streams: [{ url: "https://example.com/video.mp4" }], errors: [] };
+		});
+		const query = { get current() { return current; }, refresh };
+		let search!: ReturnType<typeof sourceLoading>;
+		cleanup = $effect.root(() => { search = sourceLoading(() => query, () => "episode-14"); });
+		await vi.advanceTimersByTimeAsync(0);
+		expect(search.searching).toBe(true);
+		await vi.advanceTimersByTimeAsync(2000);
+		expect(search.searching).toBe(true);
+		await vi.advanceTimersByTimeAsync(2000);
+		expect(refresh).toHaveBeenCalledTimes(2);
+		expect(search.searching).toBe(false);
+		expect(search.failed).toBe(false);
+		expect(query.current.streams).toHaveLength(1);
+	});
+
+	it("waits for the final retry, then exposes persistent addon failures and allows retry", async () => {
+		vi.useFakeTimers();
+		let finish!: () => void;
+		const refresh = vi.fn(async () => {
+			if (refresh.mock.calls.length === 3) await new Promise<void>((resolve) => { finish = resolve; });
+		});
+		const query = { current: { pending: false, streams: [], errors: [{ message: "stream request failed with 502" }] }, refresh };
+		let search!: ReturnType<typeof sourceLoading>;
+		cleanup = $effect.root(() => { search = sourceLoading(() => query, () => "episode-14"); });
+		await vi.advanceTimersByTimeAsync(6000);
+		expect(refresh).toHaveBeenCalledTimes(3);
+		expect(search.searching).toBe(true);
+		finish();
+		await vi.advanceTimersByTimeAsync(0);
+		expect(search.searching).toBe(false);
+		expect(search.failed).toBe(true);
+		await vi.advanceTimersByTimeAsync(4000);
+		expect(refresh).toHaveBeenCalledTimes(3);
+		search.restart();
+		await vi.advanceTimersByTimeAsync(2000);
+		expect(refresh).toHaveBeenCalledTimes(4);
+	});
+
+	it.each([
+		{ streams: [], errors: [] },
+		{ streams: [{ url: "https://example.com/video.mp4" }], errors: [{ message: "Other addon timed out" }] },
+	])("does not retry completed results or hide available streams: %j", async (result) => {
+		vi.useFakeTimers();
+		const query = { current: { pending: false, ...result }, refresh: vi.fn(async () => {}) };
+		let search!: ReturnType<typeof sourceLoading>;
+		cleanup = $effect.root(() => { search = sourceLoading(() => query, () => "episode-14"); });
+		await vi.advanceTimersByTimeAsync(6000);
+		expect(search.searching).toBe(false);
+		expect(search.failed).toBe(false);
+		expect(query.refresh).not.toHaveBeenCalled();
+	});
+
 	it("keeps loading an empty pending snapshot, then stops on completion", async () => {
 		vi.useFakeTimers();
 		let current = $state({ pending: true });

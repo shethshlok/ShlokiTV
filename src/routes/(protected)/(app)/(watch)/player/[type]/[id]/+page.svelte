@@ -361,10 +361,9 @@
 				? (active.url ?? null)
 				: null),
 	);
-	// The stream fan-out rejected (addon host down, CORS, network) : a distinct
-	// state from "still loading" so the shell can offer a retry instead of
-	// spinning forever.
-	const streamsError = $derived(!handed && (streamsQuery?.error != null || sourceSearch.expired));
+	// Both rejected queries and empty results with addon errors need a retry
+	// screen after automatic retries, rather than a "no playable stream" message.
+	const streamsError = $derived(!handed && (sourceSearch.failed || sourceSearch.expired));
 	const resolving = $derived(
 		!handed && !offlineSrc && !active && sourceSearch.searching,
 	);

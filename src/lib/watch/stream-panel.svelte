@@ -519,7 +519,7 @@
           <div class="skeleton h-20 rounded-lg"></div>
         {/each}
       </div>
-    {:else if (streamsQuery.error || search.expired) && rows.length === 0}
+    {:else if (search.failed || search.expired) && rows.length === 0}
       <div class="flex flex-col items-center gap-3 py-12 text-center">
         <p class="text-sm font-medium">{search.expired ? m.watch_search_timed_out() : m.watch_addons_unreachable()}</p>
         <button
