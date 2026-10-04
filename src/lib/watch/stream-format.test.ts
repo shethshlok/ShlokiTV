@@ -176,8 +176,23 @@ describe("pickPreferredStream", () => {
 		stream({ index: 3, title: "Movie 480p" }),
 	];
 
-	it("keeps the addon order for 'auto'", () => {
-		expect(pickPreferredStream(streams, "auto")?.index).toBe(0);
+	it("selects the highest resolution for 'auto', regardless of provider order", () => {
+		expect(pickPreferredStream(streams, "auto")?.index).toBe(1);
+	});
+
+	it("waits for later provider batches before making an automatic choice", () => {
+		expect(pickPreferredStream([streams[0]!], "auto", true)).toBeNull();
+		expect(pickPreferredStream([streams[0]!, streams[2]!], "auto", true)).toBeNull();
+		expect(pickPreferredStream(streams, "auto", false)?.index).toBe(1);
+	});
+
+	it("ranks known resolutions above unknown labels and keeps provider order for ties", () => {
+		const opts = [
+			stream({ index: 0, title: "Movie WEB AAC" }),
+			stream({ index: 1, title: "Movie 1080p AAC" }),
+			stream({ index: 2, title: "Movie 1080p AAC" }),
+		];
+		expect(pickPreferredStream(opts, "auto")?.index).toBe(1);
 	});
 
 	it("returns an exact quality match", () => {
@@ -218,12 +233,12 @@ describe("pickPreferredStream", () => {
 		expect(pickPreferredStream(opts, "auto")?.index).toBe(2);
 	});
 
-	it("'auto' keeps the first stream when none are clearly safe", () => {
+	it("'auto' picks the highest resolution when none are clearly safe", () => {
 		const opts = [
-			stream({ index: 0, title: "Movie 1080p DD5.1" }),
-			stream({ index: 1, title: "Movie 720p AC3" }),
+			stream({ index: 0, title: "Movie 720p DD5.1" }),
+			stream({ index: 1, title: "Movie 1080p AC3" }),
 		];
-		expect(pickPreferredStream(opts, "auto")?.index).toBe(0);
+		expect(pickPreferredStream(opts, "auto")?.index).toBe(1);
 	});
 });
 

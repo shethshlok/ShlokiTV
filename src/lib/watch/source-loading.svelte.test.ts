@@ -1,10 +1,41 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { sourceLoading } from "./source-loading.svelte.ts";
+import { pickPreferredStream, type ResolvedStream } from "./stream-format.ts";
 
 let cleanup: (() => void) | undefined;
 afterEach(() => { cleanup?.(); vi.useRealTimers(); });
 
 describe("background source discovery", () => {
+	it("keeps collecting later sources after a manual choice without replacing it", async () => {
+		vi.useFakeTimers();
+		const low: ResolvedStream = {
+			index: 0, url: "https://example.com/720.mp4", externalUrl: null,
+			notWebReady: false, name: "720p AAC", title: null, description: null,
+			addonName: "First", fileSize: null, infoHash: null, filename: null,
+		};
+		const high = { ...low, index: 1, url: "https://example.com/4k.mp4", name: "4K AAC" };
+		let current = $state({ pending: true, streams: [low], errors: [] });
+		const refresh = vi.fn(async () => { current = { pending: false, streams: [low, high], errors: [] }; });
+		const query = { get current() { return current; }, refresh };
+		let selected = $state<ResolvedStream | null>(null);
+		const choice = () => selected;
+		let search!: ReturnType<typeof sourceLoading>;
+		cleanup = $effect.root(() => {
+			search = sourceLoading(() => query, () => "episode-14");
+			$effect(() => {
+				if (!selected) selected = pickPreferredStream(query.current.streams, "auto", search.searching);
+			});
+		});
+		await vi.advanceTimersByTimeAsync(0);
+		expect(choice()).toBeNull();
+		selected = low;
+		await vi.advanceTimersByTimeAsync(2000);
+		expect(refresh).toHaveBeenCalledTimes(1);
+		expect(query.current.streams).toHaveLength(2);
+		expect(choice()?.url).toBe(low.url);
+		expect(search.searching).toBe(false);
+	});
+
 	it("retries an empty addon failure and resumes polling the background search", async () => {
 		vi.useFakeTimers();
 		let current = $state({ pending: false, streams: [] as unknown[], errors: [{ message: "Addon timed out" }] });

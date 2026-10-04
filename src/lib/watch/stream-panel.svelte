@@ -75,17 +75,17 @@
 	let refreshing = $state(false);
 	let filtersOpen = $state(false);
 
-	// Filters. Default: direct sources only, likely-silent hidden.
-	let kinds = $state<Set<StreamKind>>(new Set(["direct"]));
+	// Show every discovered source by default; compatibility stays visible on rows.
+	let kinds = $state<Set<StreamKind>>(new Set(["direct", "p2p"]));
 	let quality = $state<string | null>(null);
 	let addonFilter = $state<string | null>(null);
-	let showSilent = $state(false);
+	let showSilent = $state(true);
 
 	function resetFilters() {
-		kinds = new Set(["direct"]);
+		kinds = new Set(["direct", "p2p"]);
 		quality = null;
 		addonFilter = null;
-		showSilent = false;
+		showSilent = true;
 	}
 
 	// Reset whenever the target video changes.
@@ -152,10 +152,10 @@
 	);
 
 	const activeFilters = $derived(
-		Number(!(kinds.size === 1 && kinds.has("direct"))) +
+		Number(!(kinds.size === 2 && kinds.has("direct") && kinds.has("p2p"))) +
 			Number(quality !== null) +
 			Number(addonFilter !== null) +
-			Number(showSilent),
+			Number(!showSilent),
 	);
 
 	async function refresh() {
@@ -474,7 +474,7 @@
         ? m.watch_sources_count({ shown: shown.length, total: rows.length })
         : m.common_loading()}
       {#if rows.length > 0 && search.searching}
-        <span role="status" class="ml-2">{m.common_loading()}</span>
+        <span role="status" class="ml-2">{m.watch_searching_sources()}</span>
       {/if}
     </span>
     <div class="flex items-center gap-1">
@@ -512,6 +512,13 @@
   </div>
 
   <div class="min-h-0 flex-1 overflow-y-auto p-3 scrollbar-thin">
+    {#if shown.length < rows.length}
+      <button
+        type="button"
+        onclick={resetFilters}
+        class="mb-3 w-full rounded-md bg-foreground/5 px-3 py-2 text-xs font-medium hover:bg-foreground/10"
+      >{m.watch_show_all_sources()}</button>
+    {/if}
     {#if search.searching && rows.length === 0}
       <div role="status" class="flex flex-col gap-3">
         <p class="text-center text-sm text-muted-foreground">{m.watch_finding_stream()}</p>

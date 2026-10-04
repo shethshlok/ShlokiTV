@@ -361,15 +361,17 @@ function qualityDistance(stream: ResolvedStream, target: number): number {
 
 /**
  * Pick the best playable stream for a preferred quality, preferring one whose
- * audio should decode in the browser. `"auto"` (or an unknown value) keeps the
- * addon's own ordering but still hops over a leading run of likely-silent
- * streams when a browser-friendly one exists. Never returns a non-playable
- * stream unless nothing is playable at all.
+ * audio should decode in the browser. `"auto"` selects the highest resolution
+ * among browser-friendly audio sources, with provider order breaking ties.
+ * Wait for discovery before choosing automatically. Never returns a
+ * non-playable stream unless nothing is playable at all.
  */
 export function pickPreferredStream(
 	streams: ResolvedStream[],
 	preferred: string,
+	searching = false,
 ): ResolvedStream | null {
+	if (searching) return null;
 	const playable = streams.filter(isPlayable);
 	if (playable.length === 0) {
 		return streams[0] ?? null;
@@ -378,11 +380,15 @@ export function pickPreferredStream(
 	const target = QUALITY_RANK[preferred];
 
 	if (target === undefined) {
-		// "auto": keep addon order, but skip past streams whose audio looks
-		// unplayable if a safe one is available.
-		return (
-			playable.find((stream) => audioSupport(stream) === "ok") ?? playable[0]
-		);
+		const safe = playable.filter((stream) => audioSupport(stream) === "ok");
+		const candidates = safe.length > 0 ? safe : playable;
+		return candidates
+			.map((stream, order) => ({
+				stream,
+				order,
+				rank: QUALITY_RANK[streamQuality(stream) ?? ""] ?? -1,
+			}))
+			.sort((a, b) => b.rank - a.rank || a.order - b.order)[0]?.stream ?? null;
 	}
 
 	// Rank by quality closeness first, then by audio safety, then by input order.

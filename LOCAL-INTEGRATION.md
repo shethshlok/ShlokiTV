@@ -77,10 +77,17 @@ resolved by discarding our changes.
 
 The bridge returns `searchPending` while providers are running. The UI keeps
 showing loading for early empty snapshots and polls every two seconds while
-mounted. Available sources remain usable as later batches arrive. Playback locks
-the first playable selection so later batches do not restart it. Discovery stops
-after two minutes with an explicit retry message; closing the drawer cancels its
-polling. Fatal playback failures can try up to four alternative sources.
+mounted. The drawer shows all discovered sources by default, including audio-risk
+and external-player options, and distinguishes filtered counts from total results.
+Available sources remain usable as later batches arrive. Automatic playback waits
+for discovery, then selects the highest resolution with browser-friendly audio.
+An explicit quality preference selects the closest match. Manual choices stay
+fixed while the player continues collecting later results in the background.
+Discovery stops after two minutes; already available sources remain selectable.
+Empty failed requests receive bounded retries and an error screen rather than a
+false empty result. Closing the drawer cancels its polling; the mounted player
+keeps its own discovery active. Fatal playback failures can try up to four
+alternative sources, ranked by the same quality preference.
 
 Known provider limits remain: a discovered link can be unavailable, unsupported,
 or a poor match for the requested title. Source discovery does not guarantee

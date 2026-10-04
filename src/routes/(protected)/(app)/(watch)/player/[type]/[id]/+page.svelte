@@ -181,15 +181,7 @@
 					!failedSources.has(stream.url) &&
 					browserCanPlayCodec(riskyVideoCodec(stream)) !== "unsupported",
 				);
-				// The native provider's Castle link was verified for this title.
-				// Prefer it for recovery; other addons retain their normal ranking.
-				const castle = candidates.find((stream) =>
-					stream.addonName === "Nuvio native scrapers" &&
-					/^Castle\b/i.test(stream.name ?? ""),
-				);
-				const next = castle ?? (attempt === 2
-					? pickPreferredStream(candidates, theme.current.preferredQuality)
-					: candidates.find((stream) => stream.addonName !== "Nuvio native scrapers"));
+				const next = pickPreferredStream(candidates, theme.current.preferredQuality);
 				if (next) {
 					playbackHandoff.select(videoId, next, describeStream(next).title);
 					return;
@@ -300,18 +292,18 @@
 				: null),
 	);
 	const streamsQuery = $derived(
-		handed || offlineSrc ? undefined : resolveStreams({ type, id }),
+		offlineSrc ? undefined : resolveStreams({ type, id }),
 	);
 	const sourceSearch = sourceLoading(() => streamsQuery, () => `${type}:${id}`);
 	const autoStream = $derived(
 		pickPreferredStream(
-			(streamsQuery?.current?.streams ?? []).filter((stream) =>
-				!sourceSearch.searching || (stream.url && !stream.notWebReady),
-			),
+			streamsQuery?.current?.streams ?? [],
 			theme.current.preferredQuality,
+			sourceSearch.searching,
 		),
 	);
-	// Keep the first playable choice stable while later provider batches arrive.
+	// Lock the automatic choice after discovery. Manual picks take precedence,
+	// while the query continues polling for sources in the background.
 	$effect(() => {
 		if (!handed && autoStream?.url && !autoStream.notWebReady) {
 			untrack(() => playbackHandoff.select(id, autoStream, describeStream(autoStream).title));
@@ -862,8 +854,11 @@
       title={context.heading}
       certification={context.certification}
       genres={context.genres}
-      label={m.watch_finding_stream()}
+      label={m.watch_finding_best_stream()}
     />
+    <div class="absolute inset-x-0 bottom-24 z-10 flex justify-center">
+      <Button variant="secondary" onclick={openSources}>{m.watch_choose_source()}</Button>
+    </div>
   {:else if streamsError}
     <div
       class="relative z-10 flex max-w-md flex-col items-center gap-3 px-6 text-center"

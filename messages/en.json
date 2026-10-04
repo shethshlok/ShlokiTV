@@ -721,8 +721,8 @@
 	"settings_move_up": "Move up",
 	"settings_playback_description": "How the player behaves for this profile.",
 	"settings_quality": "Preferred quality",
-	"settings_quality_auto": "Auto (addon order)",
-	"settings_quality_hint": "The player auto-picks the closest match from a source list. You can still choose any source manually.",
+	"settings_quality_auto": "Auto (best available)",
+	"settings_quality_hint": "Auto waits for source discovery and picks the highest resolution with browser-friendly audio. A specific quality picks the closest match. You can choose a source while others are still loading.",
 	"settings_region": "Where to watch region",
 	"settings_region_auto": "Detect from browser",
 	"settings_region_hint": "Which country's streaming services the \"Available on\" list and the official-source Watch button use.",
@@ -900,7 +900,9 @@
 	"watch_seasons": "Seasons",
 	"watch_seasons_episodes": "{seasons} seasons · {episodes} episodes",
 	"watch_show_all_sources": "Show all sources",
-	"watch_sources_count": "{shown} of {total}",
+	"watch_sources_count": "{shown} shown · {total} found",
+	"watch_searching_sources": "Searching sources…",
+	"watch_finding_best_stream": "Finding the best available stream…",
 	"watch_sources_hidden": [
 		{
 			"declarations": [

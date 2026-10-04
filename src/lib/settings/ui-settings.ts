@@ -26,7 +26,7 @@ export const SUBTITLE_COLORS = [
 	"#ff9db1",
 ] as const;
 
-/** Preferred stream resolution for auto-pick on the player. `auto` = addon order. */
+/** Preferred stream resolution for auto-pick on the player. `auto` = best available. */
 export const STREAM_QUALITIES = [
 	"auto",
 	"4K",
@@ -72,7 +72,7 @@ export const uiSettingsSchema = v.object({
 	darkStyle: v.fallback(v.picklist(["dim", "amoled"]), "dim"),
 	accent: v.fallback(v.picklist(ACCENTS), "blue"),
 	autoPlayNext: v.fallback(v.boolean(), true),
-	/** Resolution the player auto-picks from a source list; "auto" = addon order. */
+	/** Resolution the player auto-picks from a source list; "auto" = best available. */
 	preferredQuality: v.fallback(v.picklist(STREAM_QUALITIES), "auto"),
 	subtitleSize: v.fallback(v.picklist(SUBTITLE_SIZES), "medium"),
 	/** CSS colour for subtitle text. */
