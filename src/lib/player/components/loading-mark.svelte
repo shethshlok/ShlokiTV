@@ -9,7 +9,7 @@
 </script>
 
 <img
-  src="/logo.webp"
+  src="/shlokitv-logo.webp"
   {alt}
   aria-hidden="true"
   width="488"

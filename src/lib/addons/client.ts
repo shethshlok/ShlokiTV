@@ -307,19 +307,25 @@ export class AddonClient {
 	async getStreams(
 		type: string,
 		id: string,
-	): Promise<{ streams: StreamWithSource[]; errors: AddonError[] }> {
+	): Promise<{ streams: StreamWithSource[]; errors: AddonError[]; pending: boolean }> {
+		let pending = false;
 		const { items, errors } = await this.fanOut(
 			{ resource: "stream", type, id },
-			(addon, data) =>
-				asArray<Stream>((data as { streams?: unknown } | null)?.streams).map(
+			(addon, data) => {
+				// Only the fixed internal bridge can request background polling.
+				if (addon.url === "https://tv.shloksheth.tech/api/scrapers/manifest.json") {
+					pending ||= (data as { behaviorHints?: { searchPending?: boolean } } | null)?.behaviorHints?.searchPending === true;
+				}
+				return asArray<Stream>((data as { streams?: unknown } | null)?.streams).map(
 					(stream) => ({
 						...stream,
 						addonId: addon.manifest.id,
 						addonName: addon.manifest.name,
 					}),
-				),
+				);
+			},
 		);
-		return { streams: items, errors };
+		return { streams: items, errors, pending };
 	}
 
 	async getSubtitles(

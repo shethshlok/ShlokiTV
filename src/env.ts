@@ -27,6 +27,17 @@ const MIN_SESSION_SECRET_LENGTH = 32;
  * secret falls back to a generated file in the data directory.
  */
 export const variables = defineEnvVars({
+	NUVIO_SCRAPER_ORIGIN: {
+		description: "Trusted internal native scraper service; empty disables integration.",
+		schema: (value: string | undefined) => {
+			if (!value) { return ""; }
+			const url = new URL(value);
+			if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
+				throw new Error("Invalid NUVIO_SCRAPER_ORIGIN");
+			}
+			return url.origin;
+		},
+	},
 	NUVIO_ADMIN_EMAILS: {
 		description:
 			"Addresses allowed to reach /admin, comma or whitespace separated. Unset means nobody can.",

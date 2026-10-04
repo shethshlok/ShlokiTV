@@ -235,14 +235,14 @@
                      surfaces. The link's `aria-label` names it. -->
                 <img
                     alt=""
-                    src="/logo-text-dark.webp"
+                    src="/shlokitv-logo-text-dark.webp"
                     width={100}
                     height={32}
                     class="dark:hidden"
                 />
                 <img
                     alt=""
-                    src="/logo-text.webp"
+                    src="/shlokitv-logo-text.webp"
                     width={100}
                     height={32}
                     class="hidden dark:block"
@@ -522,7 +522,7 @@
             )}
         >
             <Separator class="mb-4 bg-border/60" />
-            <span class="font-medium text-foreground/70">Nuvio</span>
+            <span class="font-medium text-foreground/70">ShlokiTV</span>
             <span>{m.shell_footer_tagline()}</span>
             <div class="flex items-center gap-4">
                 <a

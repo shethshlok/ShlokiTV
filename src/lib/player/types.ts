@@ -77,6 +77,8 @@ export interface VideoPlayerProps {
 	onOutro?: () => void;
 	onBack?: () => void;
 	onSources?: () => void;
+	/** Recover with an alternative after native/remux playback has failed. */
+	onSourceFailure?: (src: string) => void;
 	onSubtitleAppearance?: (patch: SubtitleAppearance) => void;
 	/** Series only: open the episode drawer. */
 	onEpisodes?: () => void;

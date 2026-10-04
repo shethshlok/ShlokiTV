@@ -33,7 +33,7 @@
 
   <div class="relative flex w-full max-w-sm flex-col gap-6">
     <div class="flex flex-col items-center gap-2 text-center">
-      <img src="/logo-text.webp" alt="Nuvio" width={132} class="drop-shadow" />
+      <img src="/shlokitv-logo-text.webp" alt="ShlokiTV" width={132} class="drop-shadow" />
       <p class="text-sm text-muted-foreground">{m.auth_tagline()}</p>
     </div>
     {@render children()}

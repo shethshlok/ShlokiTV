@@ -49,6 +49,7 @@
 		riskyVideoCodec,
 	} from "#lib/watch/stream-format.js";
 	import { getSubtitles, resolveStreams } from "#lib/watch/watch.remote.js";
+	import { sourceLoading } from "#lib/watch/source-loading.svelte.js";
 	import { EMPTY_PROVIDERS } from "#lib/watch/watch-providers.js";
 	import { watchProviders } from "#lib/watch/watch-providers.remote.js";
 	import WatchProvidersList from "#lib/watch/watch-providers-list.svelte";
@@ -141,6 +142,70 @@
 		// so "reuse last link" doesn't hand it back next time.
 		forgetLink(id);
 		sourcesPanel.open(type, id);
+	}
+
+	let recoveringSource = $state(false);
+	let recoveryVideo = "";
+	const failedSources = new Set<string>();
+
+	async function recoverSource(failedUrl: string) {
+		if (offlineSrc || recoveringSource || active?.url !== failedUrl) {
+			return;
+		}
+		const videoId = id;
+		const videoType = type;
+		if (recoveryVideo !== videoId) {
+			recoveryVideo = videoId;
+			failedSources.clear();
+		}
+		if (failedSources.has(failedUrl)) {
+			return;
+		}
+		failedSources.add(failedUrl);
+		forgetLink(videoId);
+		if (failedSources.size > 4) {
+			openSources();
+			return;
+		}
+		recoveringSource = true;
+		try {
+			const query = resolveStreams({ type: videoType, id: videoId });
+			for (let attempt = 0; attempt < 3; attempt++) {
+				await query.refresh();
+				const result = await query;
+				if (id !== videoId || active?.url !== failedUrl) {
+					return;
+				}
+				const candidates = result.streams.filter((stream) =>
+					stream.url?.startsWith("https:") && !stream.notWebReady &&
+					!failedSources.has(stream.url) &&
+					browserCanPlayCodec(riskyVideoCodec(stream)) !== "unsupported",
+				);
+				// The native provider's Castle link was verified for this title.
+				// Prefer it for recovery; other addons retain their normal ranking.
+				const castle = candidates.find((stream) =>
+					stream.addonName === "Nuvio native scrapers" &&
+					/^Castle\b/i.test(stream.name ?? ""),
+				);
+				const next = castle ?? (attempt === 2
+					? pickPreferredStream(candidates, theme.current.preferredQuality)
+					: candidates.find((stream) => stream.addonName !== "Nuvio native scrapers"));
+				if (next) {
+					playbackHandoff.select(videoId, next, describeStream(next).title);
+					return;
+				}
+				if (attempt < 2) {
+					await new Promise((done) => setTimeout(done, 5000));
+				}
+			}
+			openSources();
+		} catch {
+			if (id === videoId && active?.url === failedUrl) {
+				openSources();
+			}
+		} finally {
+			recoveringSource = false;
+		}
 	}
 
 	// In-player episode drawer (series only).
@@ -237,12 +302,21 @@
 	const streamsQuery = $derived(
 		handed || offlineSrc ? undefined : resolveStreams({ type, id }),
 	);
+	const sourceSearch = sourceLoading(() => streamsQuery, () => `${type}:${id}`);
 	const autoStream = $derived(
 		pickPreferredStream(
-			streamsQuery?.current?.streams ?? [],
+			(streamsQuery?.current?.streams ?? []).filter((stream) =>
+				!sourceSearch.searching || (stream.url && !stream.notWebReady),
+			),
 			theme.current.preferredQuality,
 		),
 	);
+	// Keep the first playable choice stable while later provider batches arrive.
+	$effect(() => {
+		if (!handed && autoStream?.url && !autoStream.notWebReady) {
+			untrack(() => playbackHandoff.select(id, autoStream, describeStream(autoStream).title));
+		}
+	});
 
 	const active = $derived.by(() => {
 		if (handed) {
@@ -274,6 +348,13 @@
 		browserCanPlayCodec(videoCodec) === "unsupported",
 	);
 
+	$effect(() => {
+		const blockedUrl = codecBlocked ? active?.url : null;
+		if (blockedUrl) {
+			untrack(() => void recoverSource(blockedUrl));
+		}
+	});
+
 	const playableSrc = $derived(
 		offlineSrc ??
 			(active && !active.notWebReady && !codecBlocked
@@ -283,9 +364,9 @@
 	// The stream fan-out rejected (addon host down, CORS, network) : a distinct
 	// state from "still loading" so the shell can offer a retry instead of
 	// spinning forever.
-	const streamsError = $derived(!handed && streamsQuery?.error != null);
+	const streamsError = $derived(!handed && (streamsQuery?.error != null || sourceSearch.expired));
 	const resolving = $derived(
-		!(handed || streamsQuery?.current || streamsError),
+		!handed && !offlineSrc && !active && sourceSearch.searching,
 	);
 
 	// Official "where to watch" : the fallback when no addon stream plays here.
@@ -656,6 +737,11 @@
   data-amoled={theme.current.darkStyle === "amoled" ? "true" : undefined}
 >
   <h1 class="sr-only">{context.heading}</h1>
+  {#if recoveringSource}
+    <div role="status" class="absolute top-20 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-black/90 px-5 py-3 text-sm text-white">
+      Trying another source…
+    </div>
+  {/if}
 
   {#if !playableSrc}
     <button
@@ -727,6 +813,7 @@
         introEnd={segments?.intro?.end ?? null}
         outroStart={segments?.credits?.start ?? null}
         minimized={endOfShow}
+        onSourceFailure={recoverSource}
         onProgress={report}
         onEnded={() => reachedEnd(true)}
         onOutro={() => reachedEnd(false)}
@@ -783,12 +870,12 @@
       class="relative z-10 flex max-w-md flex-col items-center gap-3 px-6 text-center"
     >
       <TriangleAlertIcon class="size-8 text-destructive" />
-      <p class="text-lg font-semibold">{m.watch_addons_unreachable()}</p>
+      <p class="text-lg font-semibold">{sourceSearch.expired ? m.watch_search_timed_out() : m.watch_addons_unreachable()}</p>
       <p class="text-sm text-white/60">
         {m.watch_stream_error_body()}
       </p>
       <div class="flex flex-wrap items-center justify-center gap-2">
-        <Button onclick={() => streamsQuery?.refresh()}>
+        <Button onclick={() => { sourceSearch.restart(); void streamsQuery?.refresh(); }}>
           <RotateCcwIcon data-icon="inline-start" /> {m.common_try_again()}
         </Button>
         <Button variant="secondary" onclick={openSources}

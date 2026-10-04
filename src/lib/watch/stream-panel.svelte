@@ -21,6 +21,7 @@
 	import { goto } from "$app/navigation";
 	import { resolve } from "$app/paths";
 	import { playbackHandoff } from "./playback.svelte.ts";
+	import { sourceLoading } from "./source-loading.svelte.ts";
 	import {
 		isPlayable,
 		type ResolvedStream,
@@ -69,6 +70,7 @@
 
 	const streamsQuery = $derived(resolveStreams({ type, id: videoId }));
 	const result = $derived(streamsQuery.current);
+	const search = sourceLoading(() => streamsQuery, () => `${type}:${videoId}`);
 
 	let refreshing = $state(false);
 	let filtersOpen = $state(false);
@@ -157,6 +159,7 @@
 	);
 
 	async function refresh() {
+		search.restart();
 		refreshing = true;
 		try {
 			await streamsQuery.refresh();
@@ -467,9 +470,12 @@
     class="flex items-center justify-between gap-3 border-b border-foreground/10 px-4 py-2.5"
   >
     <span class="text-xs font-medium text-muted-foreground">
-      {result
+      {result && (rows.length > 0 || !search.searching)
         ? m.watch_sources_count({ shown: shown.length, total: rows.length })
         : m.common_loading()}
+      {#if rows.length > 0 && search.searching}
+        <span role="status" class="ml-2">{m.common_loading()}</span>
+      {/if}
     </span>
     <div class="flex items-center gap-1">
       <button
@@ -506,9 +512,16 @@
   </div>
 
   <div class="min-h-0 flex-1 overflow-y-auto p-3 scrollbar-thin">
-    {#if streamsQuery.error}
+    {#if search.searching && rows.length === 0}
+      <div role="status" class="flex flex-col gap-3">
+        <p class="text-center text-sm text-muted-foreground">{m.watch_finding_stream()}</p>
+        {#each { length: 6 } as _skeleton, i (i)}
+          <div class="skeleton h-20 rounded-lg"></div>
+        {/each}
+      </div>
+    {:else if (streamsQuery.error || search.expired) && rows.length === 0}
       <div class="flex flex-col items-center gap-3 py-12 text-center">
-        <p class="text-sm font-medium">{m.watch_addons_unreachable()}</p>
+        <p class="text-sm font-medium">{search.expired ? m.watch_search_timed_out() : m.watch_addons_unreachable()}</p>
         <button
           type="button"
           onclick={refresh}

@@ -405,6 +405,17 @@ describe("getMeta", () => {
 });
 
 describe("getStreams", () => {
+	it("reports background work only for the trusted native bridge", async () => {
+		const bridge = installed({
+			url: "https://tv.shloksheth.tech/api/scrapers/manifest.json",
+			baseUrl: "https://tv.shloksheth.tech/api/scrapers",
+		});
+		const data = { streams: [], behaviorHints: { searchPending: true } };
+		const native = await client([bridge], fetchStub([["tv.shloksheth.tech", data]])).getStreams("movie", "tt1");
+		expect(native.pending).toBe(true);
+		const external = await client([installed()], fetchStub([["one.example", data]])).getStreams("movie", "tt1");
+		expect(external.pending).toBe(false);
+	});
 	it("stamps every stream with the addon that served it", async () => {
 		const two = installed({
 			baseUrl: "https://two.example",

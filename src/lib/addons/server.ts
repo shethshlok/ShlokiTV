@@ -1,5 +1,5 @@
 import { requireProfile } from "#lib/server/guards.js";
-import { pinnedFetch } from "#lib/server/safe-fetch.js";
+import { scraperAddon, scraperFetch } from "./scraper-bridge.server.ts";
 import { LOGGER } from "#lib/services/index.js";
 import { pullHomeLayout } from "#lib/settings/settings-data.js";
 import { getRequestEvent } from "$app/server";
@@ -50,7 +50,7 @@ export async function getRegistry(): Promise<{
 	// and means a future refactor can't silently start sharing one cache entry.
 	if (!userId) {
 		const rows = await event.locals.nuvio.addons.list(profileId);
-		return await buildRegistry(rows, pinnedFetch);
+		return await buildRegistry([...rows, ...scraperAddon()], scraperFetch());
 	}
 	const key = cacheKey(userId, profileId);
 	const hit = cache.get(key);
@@ -60,7 +60,7 @@ export async function getRegistry(): Promise<{
 		return { registry: hit.registry, errors: hit.errors };
 	}
 	const rows = await event.locals.nuvio.addons.list(profileId);
-	const built = await buildRegistry(rows, pinnedFetch);
+	const built = await buildRegistry([...rows, ...scraperAddon()], scraperFetch());
 	pruneExpired();
 	cache.set(key, { at: Date.now(), ...built });
 	return built;
@@ -132,7 +132,7 @@ export async function getAddonClient(): Promise<{
 	return {
 		client: new AddonClient(
 			registry,
-			pinnedFetch,
+			scraperFetch(),
 			undefined,
 			getRequestEvent().locals.services.get(LOGGER),
 		),

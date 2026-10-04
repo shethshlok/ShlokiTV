@@ -2,6 +2,14 @@
 
 ## Open
 
+- [ ] **Local scraper preview: account/playback verification.** Separate engine
+      is connected without writing cloud addons. Signed-in profile selection and
+      movie/episode playback passed after the HTTP cookie fix. Verify profile
+      inheritance, standard addon coexistence and cold/warm
+      timings across more providers/devices; the production domain has been switched.
+- [ ] **Local scraper settings.** Add per-profile settings/toggles and incremental
+      source refresh. Current prototype uses native script defaults.
+
 - [ ] **In-browser fix: confirm on real debrid hosts.** Proven on local fixtures
       only (H.264 + E-AC-3, HEVC Main10 + DTS, VP9 + AC-3), in Chrome and
       Playwright's Chromium. Unknown: which hosts send CORS headers, how a 60 GB

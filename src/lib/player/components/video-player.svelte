@@ -61,6 +61,7 @@
 		onOutro,
 		onBack,
 		onSources,
+		onSourceFailure,
 		onSubtitleAppearance,
 		onEpisodes,
 		onNext,
@@ -70,6 +71,11 @@
 	let video = $state<HTMLVideoElement | null>(null);
 
 	let fatalError = $state<string | null>(null);
+	$effect(() => {
+		if (fatalError) {
+			onSourceFailure?.(src);
+		}
+	});
 
 	const player = createPlayerController({
 		// Fullscreening the player's own div drops every overlay mounted outside

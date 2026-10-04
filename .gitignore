@@ -40,3 +40,11 @@ screens/
 /.vale/styles/*
 !/.vale/styles/config/
 .playwright-mcp/
+
+# Production state belongs to this host, not the fork.
+.update-next.lock
+.next-deployed-tag
+.next-deployed-sha
+.next-update-error
+.fork-sync-*
+.runtime-config/

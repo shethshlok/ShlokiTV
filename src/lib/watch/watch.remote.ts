@@ -30,8 +30,9 @@ export const resolveStreams = query(
 	v.object({ type: v.string(), id: v.string() }),
 	async ({ type, id }) => {
 		const { client } = await getAddonClient();
-		const { streams, errors } = await client.getStreams(type, id);
+		const { streams, errors, pending } = await client.getStreams(type, id);
 		return {
+			pending,
 			streams: streams.map((stream, index) => ({
 				index,
 				url: httpUrlOrNull(stream.url),

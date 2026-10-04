@@ -15,7 +15,7 @@ class PageTitle {
 	#segment = $state<string | null>(null);
 
 	get full(): string {
-		return this.#segment ? `Nuvio · ${this.#segment}` : "Nuvio";
+		return this.#segment ? `ShlokiTV · ${this.#segment}` : "ShlokiTV";
 	}
 
 	set(segment: string | null | undefined) {

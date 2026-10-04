@@ -18,8 +18,13 @@
 	"account_duration_minutes": "{minutes} min",
 	"account_episodes": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
-			"selectors": ["countPlural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
 			"match": {
 				"countPlural=one": "{count} episodio",
 				"countPlural=other": "{count} episodios"
@@ -30,8 +35,13 @@
 	"account_finished": "terminadas",
 	"account_history_count": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
-			"selectors": ["countPlural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
 			"match": {
 				"countPlural=one": "{count} título visto, del más reciente al más antiguo",
 				"countPlural=other": "{count} títulos vistos, del más reciente al más antiguo"
@@ -70,11 +80,16 @@
 	"admin_added": "Añadida el {date} por {by}",
 	"admin_allow_email": "Permitir una dirección de correo",
 	"admin_allowlist_empty": "La lista de permitidos está vacía, así que solo los administradores del servidor pueden iniciar sesión.",
-	"admin_back": "Volver a Nuvio",
+	"admin_back": "Volver a ShlokiTV",
 	"admin_chart_aria": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
-			"selectors": ["countPlural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
 			"match": {
 				"countPlural=one": "{label}: {total} en {count} día",
 				"countPlural=other": "{label}: {total} en los últimos {count} días"
@@ -89,7 +104,10 @@
 				"local signInsPlural = signIns: plural",
 				"local peoplePlural = people: plural"
 			],
-			"selectors": ["signInsPlural", "peoplePlural"],
+			"selectors": [
+				"signInsPlural",
+				"peoplePlural"
+			],
 			"match": {
 				"signInsPlural=one, peoplePlural=one": "{day}: {signIns} inicio de sesión, {people} persona",
 				"signInsPlural=one, peoplePlural=other": "{day}: {signIns} inicio de sesión, {people} personas",
@@ -100,8 +118,13 @@
 	],
 	"admin_chart_caption": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
-			"selectors": ["countPlural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
 			"match": {
 				"countPlural=one": "{label} · en {count} día",
 				"countPlural=other": "{label} · en los últimos {count} días"
@@ -129,7 +152,10 @@
 				"local addressesPlural = addresses: plural",
 				"local adminsPlural = admins: plural"
 			],
-			"selectors": ["addressesPlural", "adminsPlural"],
+			"selectors": [
+				"addressesPlural",
+				"adminsPlural"
+			],
 			"match": {
 				"addressesPlural=one, adminsPlural=one": "{addresses} dirección permitida, más {admins} administrador del servidor.",
 				"addressesPlural=one, adminsPlural=other": "{addresses} dirección permitida, más {admins} administradores del servidor.",
@@ -195,8 +221,13 @@
 	"collections_empty_title": "Aún no tienes colecciones",
 	"collections_folder_count": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
-			"selectors": ["countPlural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
 			"match": {
 				"countPlural=one": "{count} carpeta",
 				"countPlural=other": "{count} carpetas"
@@ -353,8 +384,13 @@
 	"library_sort_rating": "Mejor valorados",
 	"library_titles_saved": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
-			"selectors": ["countPlural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
 			"match": {
 				"countPlural=one": "{count} título guardado",
 				"countPlural=other": "{count} títulos guardados"
@@ -390,8 +426,8 @@
 	"nav_search": "Buscar",
 	"nav_settings": "Ajustes",
 	"nav_watch_history": "Historial",
-	"notice_description": "Cómo funciona Nuvio Web, en resumen.",
-	"notice_hosts_nothing": "Nuvio Web no aloja vídeos, metadatos ni subtítulos. Todo lo que exploras y reproduces procede de los addons de terceros que decides instalar.",
+	"notice_description": "Cómo funciona ShlokiTV, en resumen.",
+	"notice_hosts_nothing": "ShlokiTV no aloja vídeos, metadatos ni subtítulos. Todo lo que exploras y reproduces procede de los addons de terceros que decides instalar.",
 	"notice_responsibility": "Eres responsable de los addons que añades y de tener derecho a acceder a lo que devuelven. Añade solo addons de confianza.",
 	"notice_title": "Antes de empezar",
 	"notice_understand": "Entendido",
@@ -546,8 +582,13 @@
 	"settings_addons_browse_title": "Explorar addons",
 	"settings_addons_catalog_count": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
-			"selectors": ["countPlural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
 			"match": {
 				"countPlural=one": "{count} catálogo",
 				"countPlural=other": "{count} catálogos"
@@ -556,8 +597,13 @@
 	],
 	"settings_addons_catalog_count_exact": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
-			"selectors": ["countPlural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
 			"match": {
 				"countPlural=one": "{count} catálogo",
 				"countPlural=other": "{count} catálogos"
@@ -572,7 +618,7 @@
 	"settings_addons_directory_failed": "No se pudo cargar este directorio.",
 	"settings_addons_disable": "Desactivar {name}",
 	"settings_addons_disabled": "Desactivado",
-	"settings_addons_disclaimer": "Nuvio Web no aloja nada. Todo lo que ves proviene de los addons que instalas: tú los eliges y eres responsable de lo que devuelven. Añade solo addons que tengas derecho a usar.",
+	"settings_addons_disclaimer": "ShlokiTV no aloja nada. Todo lo que ves proviene de los addons que instalas: tú los eliges y eres responsable de lo que devuelven. Añade solo addons que tengas derecho a usar.",
 	"settings_addons_discover_description": "Estos addons listan otros addons: explora cada directorio e instala lo que quieras.",
 	"settings_addons_discover_title": "Descubrir más addons",
 	"settings_addons_drag": "Arrastra para reordenar",
@@ -581,8 +627,13 @@
 	"settings_addons_enable": "Activar {name}",
 	"settings_addons_errors": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
-			"selectors": ["countPlural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
 			"match": {
 				"countPlural=one": "No se pudo cargar {count} addon:",
 				"countPlural=other": "No se pudieron cargar {count} addons:"
@@ -647,8 +698,13 @@
 	"settings_language_hint": "Se guarda en este navegador. Al cambiarlo se recarga la página.",
 	"settings_link_cache_days": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
-			"selectors": ["countPlural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
 			"match": {
 				"countPlural=one": "{count} día",
 				"countPlural=other": "{count} días"
@@ -699,7 +755,7 @@
 	"shell_footer_tagline": "Un cliente web para tu biblioteca, addons y streams de Nuvio.",
 	"shell_install_app": "Instalar app",
 	"shell_leave_settings": "Salir de ajustes",
-	"shell_logo_home": "Nuvio: inicio",
+	"shell_logo_home": "ShlokiTV: inicio",
 	"shell_menu": "Menú",
 	"shell_nav_main": "Principal",
 	"shell_profile_menu": "Menú del perfil",
@@ -708,7 +764,7 @@
 	"shell_support_nuvio": "Apoya a Nuvio",
 	"shell_switch_profile": "Cambiar de perfil",
 	"small_screen_after": "funciona mejor.",
-	"small_screen_before": "Nuvio web está pensado para escritorio. En un teléfono, la",
+	"small_screen_before": "ShlokiTV está pensado para escritorio. En un teléfono, la",
 	"small_screen_link": "app móvil",
 	"social_create": "Crear",
 	"social_name": "Nombre",
@@ -748,8 +804,13 @@
 	"watch_detail_watch": "Ver",
 	"watch_episode_count": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
-			"selectors": ["countPlural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
 			"match": {
 				"countPlural=one": "{count} episodio",
 				"countPlural=other": "{count} episodios"
@@ -767,8 +828,13 @@
 	"watch_filter_quality": "Calidad",
 	"watch_filter_show_silent": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
-			"selectors": ["countPlural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
 			"match": {
 				"countPlural=one": "Mostrar {count} fuente probablemente sin sonido",
 				"countPlural=other": "Mostrar {count} fuentes probablemente sin sonido"
@@ -778,6 +844,7 @@
 	"watch_filter_silent_hint": "El navegador no puede decodificar su códec de audio (Dolby / DTS / Atmos): el vídeo se reproduce sin sonido.",
 	"watch_filter_source": "Fuente",
 	"watch_filters": "Filtros",
+	"watch_search_timed_out": "La búsqueda de fuentes está tardando más de lo esperado. Inténtalo de nuevo.",
 	"watch_finding_stream": "Buscando una fuente",
 	"watch_flag_progress": "{watched}/{total} vistos",
 	"watch_flag_watched": "Visto",
@@ -791,8 +858,13 @@
 	"watch_mark_up_to_here": "Marcar como visto hasta aquí",
 	"watch_marked_episodes": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
-			"selectors": ["countPlural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
 			"match": {
 				"countPlural=one": "{count} episodio marcado como visto",
 				"countPlural=other": "{count} episodios marcados como vistos"
@@ -831,8 +903,13 @@
 	"watch_sources_count": "{shown} de {total}",
 	"watch_sources_hidden": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
-			"selectors": ["countPlural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
 			"match": {
 				"countPlural=one": "{count} fuente oculta",
 				"countPlural=other": "{count} fuentes ocultas"
@@ -846,8 +923,13 @@
 	"watch_up_next": "A continuación",
 	"watch_watched_suffix": [
 		{
-			"declarations": ["input count", "local countPlural = count: plural"],
-			"selectors": ["countPlural"],
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural"
+			],
+			"selectors": [
+				"countPlural"
+			],
 			"match": {
 				"countPlural=one": " · {count} visto",
 				"countPlural=other": " · {count} vistos"

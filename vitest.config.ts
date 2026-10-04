@@ -23,7 +23,13 @@ export default defineConfig({
 				// Node), `navigator.onLine` and `document`'s visibility event. The
 				// setup file provides the first and last; nothing else needs a DOM.
 				extends: true,
-				plugins: [svelte()],
+				plugins: [svelte({
+					// These lifecycle tests need real client effects; SSR erases $effect.
+					dynamicCompileOptions: ({ filename }) =>
+						filename.includes("/watch/source-loading.svelte")
+							? { generate: "client" }
+							: {},
+				})],
 				resolve: { conditions: ["browser"] },
 				test: {
 					name: "runes",

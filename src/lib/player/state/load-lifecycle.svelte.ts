@@ -72,8 +72,8 @@ export function createPlayerLoadLifecycle(deps: {
 		const mediaError = video?.error;
 		const code = mediaError?.code;
 
-		// `SRC_NOT_SUPPORTED` (4) means the container/codec can't be played at
-		// all : no point retrying, but a refused container can be re-muxed.
+		// Code 4 also covers unavailable hosts and blocked links. Try remuxing
+		// a refused container, but avoid claiming every failure is a codec issue.
 		if (!mediaError || code === mediaError.MEDIA_ERR_SRC_NOT_SUPPORTED) {
 			const src = deps.src();
 			void deps.tryRemux().then((fixed) => {
