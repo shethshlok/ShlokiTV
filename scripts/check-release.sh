@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 repo=$(cd -- "$(dirname -- "$0")/.." && pwd)
+python3 "$repo/scripts/update-next.test.py"
 # Candidate code receives no host credentials or production environment file.
 docker run --rm \
   --user "$(id -u):$(id -g)" \

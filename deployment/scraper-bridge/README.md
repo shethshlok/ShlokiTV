@@ -1,6 +1,6 @@
 # Native Nuvio scraper bridge
 
-Separate engine for the community web UI at ../NuvioWeb-Next. Production at
+Native engine included in the ShlokiTV web fork. Production at
 https://tv.shloksheth.tech uses this bridge with the new community UI.
 
 ## Behavior
@@ -37,7 +37,7 @@ sources. Playback, CORS and codec support still depend on each source/browser.
 
 worker.mjs adapts the browser worker protocol to Node worker threads. The vendored
 worker, providerProxy.mjs and envProperties.mjs derive from GYK-Studio/NuvioWeb
-main ff5eb45 with the local patches in ../NuvioWeb-PluginPreview; see LICENSE.GYK.
+main ff5eb45 with the original local browser integration; see LICENSE.GYK.
 The vendored QuickJS browser bundle was copied from that same deployment and
 includes quickjs-emscripten. Preserve vendor license notices on redistribution.
 Actual provider scripts remain in their upstream repository and are fetched at
@@ -50,4 +50,4 @@ and health return 200. Direct Castle worker returned one Matrix source in 1195ms
 and three Reacher S1E1 sources in 1554ms. These measure discovery, not playback.
 Account-specific discovery, sign-in, and movie/episode playback passed through
 the new UI. Domain cutover and daily update details are in
-../NuvioWeb-Next/LOCAL-INTEGRATION.md.
+../../LOCAL-INTEGRATION.md.

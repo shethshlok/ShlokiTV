@@ -21,6 +21,7 @@ jobs:
       - run: bun install --frozen-lockfile --ignore-scripts
       - run: bun run check
       - run: bunx vitest run src/lib/addons/client.test.ts src/lib/watch/source-loading.svelte.test.ts src/lib/watch/stream-format.test.ts
+      - run: python3 scripts/update-next.test.py
       - run: node --check deployment/scraper-bridge/server.mjs
       - run: bash -n scripts/update-next.sh scripts/watchdog-next.sh
       - run: docker build -t shlokitv-check .
