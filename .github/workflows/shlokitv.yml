@@ -20,7 +20,7 @@ jobs:
           bun-version-file: package.json
       - run: bun install --frozen-lockfile --ignore-scripts
       - run: bun run check
-      - run: bunx vitest run src/lib/addons/client.test.ts src/lib/watch/source-loading.svelte.test.ts src/lib/watch/stream-format.test.ts
+      - run: bunx vitest run src/lib/addons/client.test.ts src/lib/watch/source-loading.svelte.test.ts src/lib/watch/stream-format.test.ts src/lib/player/transmux-session.test.ts src/lib/player/transmux.test.ts src/lib/player/media.test.ts src/lib/player/audio-language.test.ts
       - run: python3 scripts/update-next.test.py
       - run: node --check deployment/scraper-bridge/server.mjs
       - run: bash -n scripts/update-next.sh scripts/watchdog-next.sh

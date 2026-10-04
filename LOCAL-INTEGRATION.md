@@ -47,7 +47,7 @@ with up to ten minutes jitter. It runs `scripts/update-next.sh`, which:
 1. Requires a clean production checkout and fetches the fork and upstream refs.
 2. Creates a temporary worktree from `origin/shlokitv`.
 3. Merges the latest numeric stable upstream release if not already included.
-4. Runs type checks and focused addon, source-loading and stream-format tests.
+4. Runs type checks and focused addon, source-loading, stream-format and audio tests.
 5. Builds candidate UI and bridge images before changing the running app.
 6. Pushes the validated merge to the fork with a normal non-forced push.
 7. Deploys both images and candidate runtime configuration with health checks,
@@ -85,6 +85,19 @@ polling. Fatal playback failures can try up to four alternative sources.
 Known provider limits remain: a discovered link can be unavailable, unsupported,
 or a poor match for the requested title. Source discovery does not guarantee
 that every provider link plays the correct media.
+
+Direct MP4/MKV files with multiple supported audio tracks use the existing MSE
+transmux pipeline when the browser lacks native `audioTracks`. This exposes the
+Audio menu even when the default audio already plays. Single-track files keep
+native playback. HLS retains its existing track selection. The direct-file
+fallback requires a readable source (CORS), supported video and audio codecs,
+and browser MSE support; unavailable tracks cannot be supplied by the player.
+
+The audio change was checked in the actual Chromium player with a generated
+two-track H.264/AAC file: both options appeared, playback continued when switching
+in both directions, and captured audio changed between the fixture's 440 Hz and
+880 Hz tones. Focused tests also cover native track support, single-track files
+and preferred audio language.
 
 ## Recovery
 
