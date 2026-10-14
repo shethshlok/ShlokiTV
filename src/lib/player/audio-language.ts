@@ -96,3 +96,29 @@ export function preferredTrackIndex(
 	}
 	return -1;
 }
+
+/** Preserve release labels while spelling out the file's declared language. */
+export function audioChoiceLabel(
+	track: { label: string; language?: string },
+	locale = "en",
+): string {
+	const key = languageKey(track.language);
+	if (!key) {
+		return track.label;
+	}
+	try {
+		const name = new Intl.DisplayNames([locale], { type: "language" }).of(key);
+		if (!name || name === key) {
+			return track.label;
+		}
+		if (
+			!track.label ||
+			track.label.toLowerCase().includes(name.toLowerCase())
+		) {
+			return track.label || name;
+		}
+		return `${name} · ${track.label}`;
+	} catch {
+		return track.label;
+	}
+}

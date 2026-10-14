@@ -1,5 +1,4 @@
 <script lang="ts">
-	import AudioLinesIcon from "@lucide/svelte/icons/audio-lines";
 	import CaptionsIcon from "@lucide/svelte/icons/captions";
 	import CaptionsOffIcon from "@lucide/svelte/icons/captions-off";
 	import CastIcon from "@lucide/svelte/icons/cast";
@@ -25,6 +24,7 @@
 	import type { PlayerTransportState } from "#lib/player/state/transport-state.svelte.js";
 	import { cn } from "#lib/utils.js";
 	import { together } from "#lib/watch-together/client.svelte.js";
+	import AudioMenu from "./audio-menu.svelte";
 	import OptionMenu from "./option-menu.svelte";
 
 	const RATES = [0.5, 0.75, 1, 1.25, 1.5, 2];
@@ -34,6 +34,7 @@
 		player,
 		media,
 		onNext,
+		onSources,
 		onEpisodes,
 		hasSubtitles,
 		activeCaption,
@@ -54,11 +55,12 @@
 			"togglePlay" | "toggleFullscreen" | "togglePip"
 		>;
 		media: {
-			audioTracks: Array<{ id: number; label: string }>;
+			audioTracks: Array<{ id: number; label: string; language?: string }>;
 			activeAudioTrack: number;
 			selectAudioTrack: (id: number) => void;
 		};
 		onNext?: () => void;
+		onSources?: () => void;
 		onEpisodes?: () => void;
 		hasSubtitles: boolean;
 		activeCaption: string | null;
@@ -76,7 +78,7 @@
 	} = $props();
 </script>
 
-<div class="flex items-center gap-2 sm:gap-3">
+<div class="flex flex-wrap items-center gap-2 sm:gap-3">
   <Button
     variant="ghost"
     size="icon"
@@ -155,7 +157,7 @@
 
 
   <div
-    class="ml-auto flex items-center gap-0.5 rounded-full bg-white/5 p-1 ring-1 ring-white/10 sm:gap-1"
+    class="ml-auto flex max-w-full basis-full flex-wrap items-center justify-end gap-0.5 rounded-2xl sm:basis-auto sm:rounded-full bg-white/5 p-1 ring-1 ring-white/10 sm:gap-1"
   >
     {#if onNext}
       <Button
@@ -204,21 +206,14 @@
       </Button>
     {/if}
 
-    {#if media.audioTracks.length > 1}
-      <OptionMenu
-        open={openMenu === "audio"}
-        onOpenChange={(open) => onMenuOpenChange("audio", open)}
-        label={m.player_audio()}
-        options={media.audioTracks.map((track) => ({
-          value: String(track.id),
-          label: track.label,
-        }))}
-        value={String(media.activeAudioTrack)}
-        onSelect={(value) => media.selectAudioTrack(Number(value))}
-      >
-        <AudioLinesIcon />
-      </OptionMenu>
-    {/if}
+    <AudioMenu
+      tracks={media.audioTracks}
+      active={media.activeAudioTrack}
+      open={openMenu === "audio"}
+      onOpenChange={(open) => onMenuOpenChange("audio", open)}
+      onSelect={media.selectAudioTrack}
+      {onSources}
+    />
 
     <OptionMenu
       open={openMenu === "speed"}
@@ -228,9 +223,9 @@
         value: String(rate),
         label: rate === 1 ? m.player_speed_normal() : `${rate}×`,
       }))}
-      value={String(transport.rate)}
+      value={String(together.room?.rate ?? transport.rate)}
       onSelect={(value) => {if(together.room)together.setRate(Number(value));else transport.rate=Number(value);}}
-      active={transport.rate !== 1}
+      active={(together.room?.rate ?? transport.rate) !== 1}
     >
       <GaugeIcon />
     </OptionMenu>

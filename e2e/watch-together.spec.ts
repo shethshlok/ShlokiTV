@@ -242,6 +242,11 @@ test("buffering, network interruptions, source replacement, and episode changes 
 		await host.goto("/dev/player");
 		await ready(host);
 		await joined(host, guest);
+		// The room opens in the host's play state; hold it so positions stay put.
+		await movie(host).evaluate((v) => (v as HTMLVideoElement).pause());
+		await expect
+			.poll(() => movie(guest).evaluate((v) => (v as HTMLVideoElement).paused))
+			.toBe(true);
 		await host.getByRole("slider", { name: "Seek", exact: true }).fill("3");
 		await expect
 			.poll(() =>
@@ -250,7 +255,7 @@ test("buffering, network interruptions, source replacement, and episode changes 
 			.toBeCloseTo(3, 0);
 		await b.setOffline(true);
 		await expect(
-			host.getByText("Waiting for both players to load", { exact: true }),
+			host.getByText("Waiting for Guest to load", { exact: true }),
 		).toBeVisible();
 		await b.setOffline(false);
 		await expect(
@@ -274,7 +279,7 @@ test("buffering, network interruptions, source replacement, and episode changes 
 		await host.goto("/dev/player?id=episode-two");
 		await ready(host);
 		await expect(
-			guest.getByText("Waiting for both players to load", { exact: true }),
+			guest.getByText("Waiting for your player to load", { exact: true }),
 		).toBeVisible();
 		await guest.goto("/dev/player?id=episode-two");
 		await ready(guest);

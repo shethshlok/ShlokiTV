@@ -1,4 +1,7 @@
 import { randomBytes } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { mkdir, rename, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { error } from "@sveltejs/kit";
 import {
 	type RoomMedia,
@@ -33,7 +36,81 @@ interface Room {
 const key = () => randomBytes(18).toString("base64url");
 export class WatchRooms {
 	private readonly rooms = new Map<string, Room>();
+	private file: string | null = null;
+	private saving: ReturnType<typeof setTimeout> | undefined;
 	constructor(private readonly now = () => Date.now()) {}
+	/** Keep rooms on disk so a restart or deploy does not end them. Loads once. */
+	useStore(directory: string) {
+		if (this.file) {
+			return;
+		}
+		this.file = path.join(directory, "watch-together", "rooms.json");
+		try {
+			this.load(JSON.parse(readFileSync(this.file, "utf8")));
+		} catch {
+			// No saved rooms yet, or an unreadable file: start empty.
+		}
+	}
+	private load(saved: unknown) {
+		if (!Array.isArray(saved)) {
+			return;
+		}
+		const now = this.now();
+		for (const room of saved as Array<(Room & { members: Member[] }) | null>) {
+			if (typeof room?.code !== "string" || !Array.isArray(room.members)) {
+				continue;
+			}
+			// Viewers get the usual reconnect grace from the moment the server is back.
+			const members = room.members.map((m) => ({
+				...m,
+				connected: false,
+				ready: false,
+				call: false,
+				seen: now,
+				listeners: new Set<(event: string, value: unknown) => void>(),
+				bucket: 0,
+				requests: 0,
+			}));
+			this.rooms.set(room.code, {
+				...room,
+				playing: false,
+				updated: now,
+				members: new Map(members.map((m) => [m.id, m])),
+			});
+		}
+	}
+	/** Rooms as of now, with the shared clock stopped where it stands. */
+	serialize() {
+		return [...this.rooms.values()].map((room) => ({
+			...room,
+			position: roomPosition(this.snapshot(room), this.now()),
+			playing: false,
+			members: [...room.members.values()].map(
+				({ listeners: _listeners, ...member }) => member,
+			),
+		}));
+	}
+	private save() {
+		const file = this.file;
+		if (!file || this.saving) {
+			return;
+		}
+		this.saving = setTimeout(() => {
+			this.saving = undefined;
+			const temporary = `${file}.tmp`;
+			void mkdir(path.dirname(file), { recursive: true })
+				.then(() =>
+					writeFile(temporary, JSON.stringify(this.serialize()), {
+						mode: 0o600,
+					}),
+				)
+				.then(() => rename(temporary, file))
+				.catch(() => {
+					// Rooms keep working in memory when the data directory is unwritable.
+				});
+		}, 250);
+		this.saving.unref?.();
+	}
 	snapshot(room: Room): RoomSnapshot {
 		return {
 			code: room.code,
@@ -71,6 +148,7 @@ export class WatchRooms {
 				send("state", state);
 			}
 		}
+		this.save();
 	}
 	// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Sweep handles membership expiry, host transfer and room expiry in one bounded pass.
 	sweep() {
@@ -102,6 +180,7 @@ export class WatchRooms {
 					}
 				}
 				this.rooms.delete(code);
+				this.save();
 			} else {
 				this.update(room);
 			}
@@ -135,7 +214,12 @@ export class WatchRooms {
 		});
 		return { code: room.code, member: id, token };
 	}
-	create(user: string, name: string, media: RoomMedia) {
+	create(
+		user: string,
+		name: string,
+		media: RoomMedia,
+		start: { position?: number; playing?: boolean } = {},
+	) {
 		this.sweep();
 		if (
 			this.rooms.size >= 100 ||
@@ -152,9 +236,13 @@ export class WatchRooms {
 			media,
 			revision: 1,
 			sequence: 1,
-			position: 0,
-			requestedPlaying: false,
-			playing: false,
+			position: Math.min(
+				media.duration || Number.POSITIVE_INFINITY,
+				Math.max(0, start.position ?? 0),
+			),
+			requestedPlaying: start.playing === true,
+			// A host who is already playing has data; keep the clock running until they connect.
+			playing: start.playing === true,
 			rate: 1,
 			updated: now,
 			created: now,
@@ -163,7 +251,12 @@ export class WatchRooms {
 		};
 		const membership = this.add(room, user, name);
 		room.host = membership.member;
+		const host = room.members.get(membership.member);
+		if (host) {
+			host.ready = start.playing === true;
+		}
 		this.rooms.set(room.code, room);
+		this.save();
 		return membership;
 	}
 	join(code: string, user: string, name: string) {
@@ -248,6 +341,7 @@ export class WatchRooms {
 			}
 			if (!room.members.size) {
 				this.rooms.delete(code);
+				this.save();
 			} else {
 				this.update(room);
 			}

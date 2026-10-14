@@ -45,7 +45,7 @@
 		transport: PlayerTransportState;
 		player: ReturnType<typeof createPlayerTransportActions>;
 		media: {
-			audioTracks: Array<{ id: number; label: string }>;
+			audioTracks: Array<{ id: number; label: string; language?: string }>;
 			activeAudioTrack: number;
 			selectAudioTrack: (id: number) => void;
 		};
@@ -140,6 +140,7 @@
       >
     </div>
     <ControlRow
+      {onSources}
       {transport}
       {player}
       {media}

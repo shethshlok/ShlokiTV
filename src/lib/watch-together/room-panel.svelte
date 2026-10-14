@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { onMount, untrack } from "svelte";
-	import { goto } from "$app/navigation";
+	import { goto, replaceState } from "$app/navigation";
 	import { page } from "$app/state";
 	import { together } from "./client.svelte.js";
+	import { rememberedName, rememberName } from "./membership-store.js";
+	import { holdingForViewers, waitingNames } from "./readiness.js";
 
 	let name = $state("");
 	let invite = $state("");
@@ -12,7 +14,17 @@
 	let remoteVideo = $state<HTMLVideoElement | null>(null);
 	let remoteBlocked = $state(false);
 	const onPlayer = $derived(page.url.pathname.includes("/player"));
-	onMount(() => together.initialize());
+	const waiting = $derived(
+		waitingNames(together.room, together.membership?.member),
+	);
+	const holding = $derived(
+		together.connected && holdingForViewers(together.room),
+	);
+	const canShare = typeof navigator !== "undefined" && "share" in navigator;
+	onMount(() => {
+		name = rememberedName();
+		return together.initialize();
+	});
 	$effect(() => {
 		if (page.url.pathname.startsWith("/auth/") && together.membership) {
 			untrack(() => void together.leave());
@@ -55,14 +67,42 @@
 	async function act(action: () => Promise<void>) {
 		busy = true;
 		together.error = "";
+		rememberName(name);
 		try {
 			await action();
 			invite = "";
 		} catch (error) {
-			together.error =
-				error instanceof Error ? error.message : "Unable to join the room";
+			const status = (error as { status?: number }).status;
+			if (invite && status === 404) {
+				dropInvite();
+				together.error =
+					"That invite has expired. Ask for a new link, or start your own room below.";
+			} else {
+				together.error =
+					error instanceof Error ? error.message : "Unable to join the room";
+			}
 		} finally {
 			busy = false;
+		}
+	}
+	function dropInvite() {
+		invite = "";
+		const url = new URL(page.url.href);
+		url.searchParams.delete("room");
+		try {
+			replaceState(url, page.state);
+		} catch {
+			// The router is not ready; the cleared invite still shows the create form.
+		}
+	}
+	async function shareInvite() {
+		try {
+			await navigator.share({
+				title: "Watch with me on ShlokiTV",
+				url: inviteUrl,
+			});
+		} catch {
+			// Dismissed: the link stays in the field below.
 		}
 	}
 	async function copyInvite() {
@@ -76,6 +116,7 @@
 		try {
 			await navigator.clipboard.writeText(url.href);
 			copied = true;
+			setTimeout(() => (copied = false), 2500);
 		} catch {
 			together.error = "Copy the invite from the field below.";
 		}
@@ -109,24 +150,29 @@
     {#if !together.membership}
      <label class="block">Your name<input class="mt-1 mb-3 w-full rounded-lg bg-white/10 p-3" maxlength="40" bind:value={name} placeholder="Your name" /></label>
      {#if invite}
-      <button class="room-button" disabled={busy} onclick={()=>act(()=>together.join(invite,name||"Guest"))}>Join watch room</button>
+      <button class="room-button" disabled={busy} onclick={()=>act(()=>together.join(invite,name||"Guest"))}>{busy?"Joining…":"Join watch room"}</button>
      {:else}
       <p class="mb-3 text-white/70">Invite one person to watch in sync. Each viewer uses their own sources.</p>
-      <button class="room-button" disabled={busy||!together.media} onclick={()=>act(()=>together.create(name||"Host"))}>Create watch room</button>
+      <button class="room-button" disabled={busy||!together.media} onclick={()=>act(()=>together.create(name||"Host"))}>{busy?"Creating…":"Create watch room"}</button>
+      {#if !together.media}<p class="mt-2 text-xs text-white/60">Start playing a movie or episode, then create the room.</p>{/if}
      {/if}
     {:else}
-     <p role="status" class="mb-2">{together.connected ? together.room?.members.every(m=>m.ready&&m.connected) ? "Ready to watch" : "Waiting for both players to load" : "Reconnecting to the room…"}</p>
+     <p role="status" class="mb-2">{together.connected ? waiting.count ? `Waiting for ${waiting.names} to load` : "Ready to watch" : "Reconnecting to the room…"}</p>
      {#if together.room}
       <ul class="mb-3 text-white/70">{#each together.room.members as member (member.id)}<li>{member.name}{member.id===together.room.host?" · host":""} · {member.connected?member.ready?"ready":"loading":"reconnecting"}</li>{/each}</ul>
-      <p class="mb-2 break-words text-xs text-white/60">Host's source: {together.room.media.label || "Unknown release"}</p>
+      {#if together.room.rate !== 1}<p class="mb-2 text-amber-200">Room speed: {together.room.rate}× for everyone. Change it from the speed menu.</p>{/if}
+      <p class="mb-2 wrap-break-word text-xs text-white/60">Host's source: {together.room.media.label || "Unknown release"}</p>
      {/if}
-     <button class="room-button" onclick={copyInvite}>{copied?"Invite copied":"Copy invite link"}</button>
+     <div class="flex flex-wrap gap-2">
+      <button class="room-button" onclick={copyInvite}>{copied?"Invite copied":"Copy invite link"}</button>
+      {#if canShare}<button class="room-button" onclick={shareInvite}>Share invite</button>{/if}
+     </div>
      <input aria-label="Watch room invite link" readonly value={inviteUrl} class="mt-2 w-full rounded-lg bg-white/10 p-2 text-xs" onclick={(event)=>event.currentTarget.select()} />
      {#if together.mismatch&&!together.acceptedMismatch}
       <p class="mt-3 text-amber-200">Your file has a different running time. Select the same release as the host for accurate sync.</p>
       <button class="room-button mt-2" onclick={()=>together.acceptMismatch()}>Use this version anyway</button>
      {/if}
-     <button class="room-button mt-3" disabled={!together.connected} onclick={()=>together.play()}>{together.blocked?"Tap to enable playback":"Play together"}</button>
+     <button class="room-button mt-3" disabled={!together.connected} onclick={()=>together.play()}>{together.blocked?"Tap to enable playback":holding?`Starting when ${waiting.names} ${waiting.count===1?"is":"are"} ready…`:"Play together"}</button>
      {#if !together.localStream}
       <button class="room-button mt-2" disabled={!together.connected} onclick={()=>together.startCall()}>Join video call</button>
       <p class="mt-2 text-xs text-white/60">Camera and microphone start only when you join. Use headphones to avoid movie audio echo.</p>

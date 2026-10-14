@@ -30,3 +30,5 @@ unparseable = "unparseable"
 Apparence = "Apparence"
 # The MP4 track box (ISO BMFF four-character code), in the chapter reader.
 trak = "trak"
+# The HTMLMediaElement event, in the watch-room playback listeners.
+seeked = "seeked"

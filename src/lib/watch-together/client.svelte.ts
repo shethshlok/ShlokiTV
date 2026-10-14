@@ -2,6 +2,7 @@
 
 import { WatchCall } from "./call.js";
 import { PlaybackReporter, type PlaybackSample } from "./diagnostics.js";
+import { loadMembership, saveMembership } from "./membership-store.js";
 import { hasPlaybackData } from "./readiness.js";
 import {
 	type CallSignal,
@@ -12,7 +13,9 @@ import {
 	syncAdjustment,
 } from "./types.js";
 
-const STORE = "shlokitv:watch-room";
+const ignore = () => {
+	/* Keep the command queue usable after a completed request. */
+};
 
 class WatchTogether {
 	membership = $state<Membership | null>(null);
@@ -46,12 +49,15 @@ class WatchTogether {
 	private pending = 0;
 	private queue = Promise.resolve();
 	private reportedReady: boolean | undefined;
+	private mediaSentAt = 0; // A title change's new state may still be in flight.
 	private call: WatchCall | null = null;
 	private peerId = "";
 	private iceServers: RTCIceServer[] = [
 		{ urls: "stun:stun.cloudflare.com:3478" },
 	];
 	private callStarting = false;
+	private retry: ReturnType<typeof setTimeout> | undefined;
+	private retries = 0;
 	get host() {
 		return !!this.membership && this.room?.host === this.membership.member;
 	}
@@ -92,42 +98,24 @@ class WatchTogether {
 		const work = this.queue.then(() =>
 			this.request({ ...membership, revision, ...body }),
 		);
-		this.queue = work.then(
-			() => {
-				/* Keep the command queue usable after a completed request. */
-			},
-			() => {
-				/* Keep the command queue usable after a completed request. */
-			},
-		);
+		this.queue = work.then(ignore, ignore);
 		return work
-			.then(
-				() => {
-					/* Keep the command queue usable after a completed request. */
-				},
-				(error) => {
-					if (membership === this.membership) {
-						this.error = error.message;
-					}
-				},
-			)
+			.then(ignore, (error) => {
+				if (membership !== this.membership) {
+					return;
+				}
+				if ([403, 404].includes(error.status)) {
+					this.lost(error.message);
+				} else {
+					this.error = error.message;
+				}
+			})
 			.finally(() => {
 				this.pending--;
 				if (!this.pending) {
-					this.apply();
+					this.tick();
 				}
 			});
-	}
-	private persist() {
-		try {
-			if (this.membership) {
-				sessionStorage.setItem(STORE, JSON.stringify(this.membership));
-			} else {
-				sessionStorage.removeItem(STORE);
-			}
-		} catch {
-			/*Memory still works.*/
-		}
 	}
 	initialize() {
 		this.restore();
@@ -146,6 +134,7 @@ class WatchTogether {
 		};
 	}
 	private suspend() {
+		clearTimeout(this.retry);
 		this.events?.close();
 		this.events = null;
 		clearInterval(this.timer);
@@ -156,22 +145,8 @@ class WatchTogether {
 		this.video?.pause();
 	}
 	restore() {
-		try {
-			const raw = sessionStorage.getItem(STORE);
-			if (raw) {
-				const value = JSON.parse(raw);
-				if (
-					typeof value.code === "string" &&
-					typeof value.member === "string" &&
-					typeof value.token === "string"
-				) {
-					this.membership = value;
-					this.connect();
-				}
-			}
-		} catch {
-			sessionStorage.removeItem(STORE);
-		}
+		this.membership = loadMembership();
+		this.connect();
 	}
 	async create(name: string) {
 		if (!(this.media && this.video && Number.isFinite(this.video.duration))) {
@@ -182,15 +157,17 @@ class WatchTogether {
 			action: "create",
 			name,
 			media: { ...this.media, duration: this.video.duration },
+			position: this.video.currentTime,
+			playing: !this.video.paused,
 		});
-		this.persist();
+		saveMembership(this.membership);
 		this.connect();
 		this.panelOpen = true;
 	}
 	async join(code: string, name: string) {
 		await this.leave();
 		this.membership = await this.request({ action: "join", code, name });
-		this.persist();
+		saveMembership(this.membership);
 		this.connect();
 		this.panelOpen = true;
 	}
@@ -216,6 +193,7 @@ class WatchTogether {
 			this.room = room;
 			this.diagnostics.stateReceivedAt = Date.now();
 			this.connected = true;
+			this.retries = 0;
 			if (changed) {
 				this.acceptedMismatch = false;
 				this.reportedReady = undefined;
@@ -242,11 +220,13 @@ class WatchTogether {
 		});
 		for (const type of ["closed", "replaced"]) {
 			events.addEventListener(type, () => {
-				this.clear();
-				this.error =
-					type === "replaced"
-						? "This room was opened in another tab."
-						: "The room has ended.";
+				if (this.events === events) {
+					this.lost(
+						type === "replaced"
+							? "This room was opened in another tab."
+							: "The watch room has ended. Create a new room to keep watching together.",
+					);
+				}
 			});
 		}
 		events.onerror = () => {
@@ -256,11 +236,9 @@ class WatchTogether {
 					(error) => {
 						if (
 							this.membership === membership &&
-							error.status &&
 							[401, 403, 404].includes(error.status)
 						) {
-							this.clear();
-							this.error = error.message;
+							this.lost(error.message);
 						}
 					},
 				);
@@ -270,6 +248,18 @@ class WatchTogether {
 			this.reportedReady = undefined;
 			this.suppressUntil = performance.now() + 1000;
 			this.video?.pause();
+			// A 5xx while the server restarts closes the stream for good: reopen it.
+			if (events.readyState === EventSource.CLOSED && membership) {
+				clearTimeout(this.retry);
+				this.retry = setTimeout(
+					() => {
+						if (this.membership === membership && this.events === events) {
+							this.connect();
+						}
+					},
+					Math.min(15_000, 1000 * 2 ** this.retries++),
+				);
+			}
 		};
 		this.timer = setInterval(() => this.tick(), 1000);
 	}
@@ -282,7 +272,15 @@ class WatchTogether {
 			});
 		}
 	}
+	/** The room is gone for good: drop it, say why, and offer a new one. */
+	private lost(message: string) {
+		this.clear();
+		this.error = message;
+		this.panelOpen = true;
+	}
 	private clear() {
+		clearTimeout(this.retry);
+		this.retries = 0;
 		this.events?.close();
 		this.events = null;
 		clearInterval(this.timer);
@@ -291,7 +289,7 @@ class WatchTogether {
 		this.membership = null;
 		this.room = null;
 		this.stopCall();
-		this.persist();
+		saveMembership(this.membership);
 		if (this.video) {
 			this.video.playbackRate = 1;
 		}
@@ -408,12 +406,14 @@ class WatchTogether {
 			Number.isFinite(video.duration) &&
 			video.duration > 0 &&
 			!this.pending &&
+			Date.now() - this.mediaSentAt > 3000 &&
 			(room.media.id !== media.id ||
 				room.media.type !== media.type ||
 				room.media.label !== media.label ||
 				room.media.title !== media.title ||
 				Math.abs(room.media.duration - video.duration) > 0.5)
 		) {
+			this.mediaSentAt = Date.now();
 			void this.command({
 				action: "media",
 				media: { ...media, duration: video.duration },

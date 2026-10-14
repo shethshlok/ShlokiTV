@@ -35,6 +35,7 @@ const bodySchema = v.object({
 	position: v.optional(number(0, 86_400)),
 	rate: v.optional(number(0.5, 2)),
 	ready: v.optional(v.boolean()),
+	playing: v.optional(v.boolean()),
 	enabled: v.optional(v.boolean()),
 	target: v.optional(text(24)),
 	signal: v.optional(
@@ -59,6 +60,7 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
 	if (!locals.session) {
 		error(401, "Sign in to ShlokiTV to watch together.");
 	}
+	watchRooms.useStore(locals.services.get(DATABASE).directory);
 	if (request.headers.get("origin") !== url.origin) {
 		error(403, "Cross-site room requests are forbidden.");
 	}
@@ -85,9 +87,13 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
 		if (!b.media) {
 			error(400, "Choose a movie first.");
 		}
-		return json(watchRooms.create(user, b.name?.trim() || "Host", b.media), {
-			headers,
-		});
+		return json(
+			watchRooms.create(user, b.name?.trim() || "Host", b.media, {
+				position: b.position,
+				playing: b.playing,
+			}),
+			{ headers },
+		);
 	}
 	if (b.action === "join") {
 		if (!b.code) {
@@ -131,6 +137,7 @@ export const GET: RequestHandler = ({ request, locals, url }) => {
 	if (!locals.session) {
 		error(401, "Sign in to ShlokiTV to watch together.");
 	}
+	watchRooms.useStore(locals.services.get(DATABASE).directory);
 	const code = url.searchParams.get("code") ?? "",
 		id = url.searchParams.get("member") ?? "",
 		token = url.searchParams.get("token") ?? "";

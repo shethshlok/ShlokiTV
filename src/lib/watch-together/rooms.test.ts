@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { describe, expect, it, vi } from "vitest";
 import { WatchRooms } from "./rooms.server.js";
 import {
 	type RoomMedia,
@@ -71,6 +74,27 @@ describe("watch rooms", () => {
 		s.command(s.guest, "u2", { action: "ready", ready: true });
 		expect(s.state.position).toBe(8);
 		expect(s.state.playing).toBe(true);
+	});
+	it("opens a room where the host already is, without pausing them", () => {
+		let now = 1000;
+		const rooms = new WatchRooms(() => now);
+		const host = rooms.create("u1", "Host", media, {
+			position: 42,
+			playing: true,
+		});
+		let state: RoomSnapshot | undefined;
+		now += 500;
+		rooms.connect(host.code, host.member, host.token, "u1", (event, value) => {
+			if (event === "state") {
+				state = value as RoomSnapshot;
+			}
+		});
+		expect(state?.playing).toBe(true);
+		expect(state?.position).toBeCloseTo(42.5);
+		// A guest who is still loading holds the clock without dropping the request.
+		rooms.join(host.code, "u2", "Guest");
+		expect(state?.playing).toBe(false);
+		expect(state?.requestedPlaying).toBe(true);
 	});
 	it("authorizes memberships by user and secret and caps rooms at two viewers", () => {
 		const s = setup();
@@ -191,4 +215,47 @@ it("diagnostic traffic does not change the playback clock or publish room update
 		position: s.state.position,
 		playing: s.state.playing,
 	}).toEqual(before);
+});
+
+describe("room persistence", () => {
+	it("keeps rooms, members and the paused position across a restart", async () => {
+		const directory = await mkdtemp(path.join(tmpdir(), "rooms-"));
+		let now = 1000;
+		const before = new WatchRooms(() => now);
+		before.useStore(directory);
+		const host = before.create("u1", "Host", media, {
+			position: 30,
+			playing: true,
+		});
+		const guest = before.join(host.code, "u2", "Guest");
+		now += 5000;
+		const file = path.join(directory, "watch-together", "rooms.json");
+		await vi.waitFor(() => readFile(file, "utf8"));
+
+		const after = new WatchRooms(() => now);
+		after.useStore(directory);
+		let state: RoomSnapshot | undefined;
+		after.connect(host.code, host.member, host.token, "u1", (event, value) => {
+			if (event === "state") {
+				state = value as RoomSnapshot;
+			}
+		});
+		expect(() =>
+			after.connect(guest.code, guest.member, guest.token, "u2", () => {}),
+		).not.toThrow();
+		expect(state?.playing).toBe(false);
+		// The clock was held for the guest, who had not loaded yet.
+		expect(state?.position).toBe(30);
+		expect(state?.media.id).toBe("tt1");
+		await rm(directory, { recursive: true, force: true });
+	});
+	it("starts empty when the saved file is unreadable", async () => {
+		const directory = await mkdtemp(path.join(tmpdir(), "rooms-"));
+		await mkdir(path.join(directory, "watch-together"));
+		await writeFile(path.join(directory, "watch-together", "rooms.json"), "{");
+		const rooms = new WatchRooms();
+		expect(() => rooms.useStore(directory)).not.toThrow();
+		expect(() => rooms.join("NOPE", "u1", "Guest")).toThrow();
+		await rm(directory, { recursive: true, force: true });
+	});
 });

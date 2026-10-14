@@ -447,6 +447,9 @@
 	"palette_toggle_theme": "Basculer clair / sombre",
 	"palette_your_stats": "Vos statistiques",
 	"player_appearance": "Apparence",
+	"player_audio_one_track": "Cette source propose une piste audio.",
+	"player_audio_no_tracks": "Aucune autre piste audio n’a été détectée pour cette source.",
+	"player_audio_choose_source": "Choisir une autre source",
 	"player_audio": "Audio",
 	"player_audio_codec_unsupported": "Son codec audio (Dolby Digital, DTS ou Atmos) ne peut pas être décodé ici.",
 	"player_audio_converted": "Conversion de l'audio en stéréo",
@@ -902,6 +905,8 @@
 	"watch_seasons_episodes": "{seasons} saisons · {episodes} épisodes",
 	"watch_show_all_sources": "Afficher toutes les sources",
 	"watch_sources_count": "{shown} sur {total}",
+	"watch_searching_sources": "Recherche de sources…",
+	"watch_finding_best_stream": "Recherche du meilleur flux disponible…",
 	"watch_sources_hidden": [
 		{
 			"declarations": [

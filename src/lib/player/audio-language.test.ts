@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	audioChoiceLabel,
 	audioLanguageTargets,
 	languageKey,
 	preferredTrackIndex,
@@ -53,5 +54,30 @@ describe("preferredTrackIndex", () => {
 	it("is -1 when nothing matches or nothing is wanted", () => {
 		expect(preferredTrackIndex(tracks, ["fr"])).toBe(-1);
 		expect(preferredTrackIndex(tracks, [])).toBe(-1);
+	});
+});
+
+describe("audioChoiceLabel", () => {
+	it("prefixes the spelled-out language onto a release label", () => {
+		expect(audioChoiceLabel({ label: "5.1 Atmos", language: "hin" })).toBe(
+			"Hindi · 5.1 Atmos",
+		);
+		expect(audioChoiceLabel({ label: "Piste 2", language: "eng" }, "fr")).toBe(
+			"anglais · Piste 2",
+		);
+	});
+
+	it("keeps a label that already names the language", () => {
+		expect(audioChoiceLabel({ label: "English (AC3)", language: "en" })).toBe(
+			"English (AC3)",
+		);
+	});
+
+	it("falls back to the language, then the raw label", () => {
+		expect(audioChoiceLabel({ label: "", language: "ta" })).toBe("Tamil");
+		expect(audioChoiceLabel({ label: "Track 1", language: "und" })).toBe(
+			"Track 1",
+		);
+		expect(audioChoiceLabel({ label: "Track 1" })).toBe("Track 1");
 	});
 });

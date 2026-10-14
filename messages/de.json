@@ -447,6 +447,9 @@
 	"palette_toggle_theme": "Hell / Dunkel umschalten",
 	"palette_your_stats": "Deine Statistiken",
 	"player_appearance": "Darstellung",
+	"player_audio_one_track": "Diese Quelle bietet eine Audiospur an.",
+	"player_audio_no_tracks": "Für diese Quelle wurden keine weiteren Audiospuren erkannt.",
+	"player_audio_choose_source": "Andere Quelle auswählen",
 	"player_audio": "Audio",
 	"player_audio_codec_unsupported": "Deren Audio-Codec (Dolby Digital, DTS oder Atmos) kann hier nicht dekodiert werden.",
 	"player_audio_converted": "Ton wird in Stereo umgewandelt",
@@ -902,6 +905,8 @@
 	"watch_seasons_episodes": "{seasons} Staffeln · {episodes} Folgen",
 	"watch_show_all_sources": "Alle Quellen anzeigen",
 	"watch_sources_count": "{shown} von {total}",
+	"watch_searching_sources": "Quellen werden gesucht…",
+	"watch_finding_best_stream": "Bester verfügbarer Stream wird gesucht…",
 	"watch_sources_hidden": [
 		{
 			"declarations": [

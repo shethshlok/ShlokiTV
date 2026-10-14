@@ -7,6 +7,10 @@
 	import { m } from "#lib/i18n/index.js";
 	import { cn } from "#lib/utils.js";
 	import { together } from "#lib/watch-together/client.svelte.js";
+	import {
+		holdingForViewers,
+		waitingNames,
+	} from "#lib/watch-together/readiness.js";
 
 	let {
 		title,
@@ -86,7 +90,7 @@
       class="min-h-11 shrink-0 gap-1.5 rounded-full bg-white/10 px-3 text-white ring-1 ring-white/30 hover:bg-white/20 hover:text-white dark:hover:bg-white/20"
     >
       <UsersIcon class="size-4" />
-      {together.membership ? `Watch room · ${together.room?.members.length ?? 1}/2` : "Watch together"}
+      {together.connected && holdingForViewers(together.room) ? `Watch room · waiting for ${waitingNames(together.room, together.membership?.member).names}…` : together.membership ? `Watch room · ${together.room?.members.length ?? 1}/2` : "Watch together"}
     </Button>
   {/if}
   </div>

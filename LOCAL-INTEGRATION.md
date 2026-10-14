@@ -130,8 +130,11 @@ do not prove two files have the same cut.
 Rooms live in the single UI process, expire after twelve hours, and end when both
 viewers leave. Reloads and short connection interruptions retain membership;
 an absent host is removed after 45 seconds and the remaining viewer becomes the
-host. Restarting or deploying the UI ends its rooms. The client reports an ended
-room instead of reconnecting indefinitely. Multiple UI replicas would require a
+host. Rooms are saved to `watch-together/rooms.json` in the data directory, so
+restarting or deploying the UI pauses them rather than ending them: open players
+reconnect on their own, and playback resumes once every viewer is back. A room that no longer
+exists, or an expired invite, is reported with a prompt to start a new room
+instead of reconnecting indefinitely. Multiple UI replicas would require a
 shared room store before enabling this feature across them.
 
 ### Camera and microphone

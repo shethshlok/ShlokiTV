@@ -1,3 +1,5 @@
+import type { RoomSnapshot } from "./types.js";
+
 /** A paused Safari player can have a decoded frame and buffered future data without advancing readyState to 3. */
 export function hasPlaybackData(
 	video: Pick<HTMLVideoElement, "readyState" | "currentTime" | "buffered">,
@@ -17,4 +19,22 @@ export function hasPlaybackData(
 		}
 	}
 	return false;
+}
+
+/** Someone pressed play, but the room is holding the clock for a viewer to catch up. */
+export function holdingForViewers(room: RoomSnapshot | null): boolean {
+	return !!room?.requestedPlaying && !room.playing;
+}
+
+/** `Guest`, `your player`, or `Host and your player`: who the room is waiting on. */
+export function waitingNames(room: RoomSnapshot | null, self?: string) {
+	const waiting = (room?.members ?? []).filter(
+		(m) => !(m.ready && m.connected),
+	);
+	return {
+		count: waiting.length,
+		names: waiting
+			.map((m) => (m.id === self ? "your player" : m.name))
+			.join(" and "),
+	};
 }
