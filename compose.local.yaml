@@ -13,6 +13,9 @@ services:
       timeout: 10s
       retries: 3
   ui:
+    env_file:
+      - path: ./.runtime-config/watch-together.env
+        required: false
     image: nuvio-next-ui:local
     restart: unless-stopped
     ports:

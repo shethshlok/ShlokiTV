@@ -9,6 +9,8 @@ import {
 const STORAGE_KEY = "nuvio:selected-stream";
 
 export interface SelectedStream {
+	filename?: string | null;
+	fileSize?: number | null;
 	videoId: string;
 	url: string | null;
 	externalUrl: string | null;
@@ -37,6 +39,8 @@ class PlaybackHandoff {
 	select(videoId: string, stream: ResolvedStream, label: string): void {
 		const value: SelectedStream = {
 			videoId,
+			filename: stream.filename,
+			fileSize: stream.fileSize,
 			url: stream.url,
 			externalUrl: stream.externalUrl,
 			notWebReady: stream.notWebReady,

@@ -1,3 +1,4 @@
+import { together } from "#lib/watch-together/client.svelte.js";
 import type { PlayerTransportState } from "./transport-state.svelte.ts";
 
 /**
@@ -19,6 +20,10 @@ export function createPlayerTransportActions(deps: {
 		if (!video) {
 			return;
 		}
+		if (together.room) {
+			together.togglePlayback();
+			return;
+		}
 		if (video.ended) {
 			video.currentTime = 0;
 			void video.play();
@@ -34,6 +39,10 @@ export function createPlayerTransportActions(deps: {
 		if (!video) {
 			return;
 		}
+		if (together.room) {
+			together.seekTo(video.currentTime + delta);
+			return;
+		}
 		const upper = Number.isFinite(video.duration)
 			? video.duration
 			: Number.POSITIVE_INFINITY;
@@ -43,6 +52,10 @@ export function createPlayerTransportActions(deps: {
 	function onScrub(value: number) {
 		const video = deps.video();
 		if (video) {
+			if (together.room) {
+				together.seekTo(value);
+				return;
+			}
 			video.currentTime = value;
 		}
 	}

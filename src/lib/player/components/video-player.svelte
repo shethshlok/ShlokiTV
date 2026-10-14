@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from "svelte";
 	import { toast } from "svelte-sonner";
 	import { m } from "#lib/i18n/index.js";
 	import {
@@ -22,12 +23,14 @@
 	import { theme } from "#lib/settings/theme.svelte.js";
 	import { subtitleFontSize } from "#lib/settings/ui-settings.js";
 	import { cn } from "#lib/utils.js";
+	import { together } from "#lib/watch-together/client.svelte.js";
 	import PlayerOverlays from "./overlays.svelte";
 	import SubtitlePanel from "./subtitle-panel.svelte";
 	import TransportControls from "./transport-controls.svelte";
 
 	let {
 		src,
+		watchMedia,
 		poster = null,
 		posterImage = null,
 		logo = null,
@@ -70,6 +73,19 @@
 	let container = $state<HTMLDivElement | null>(null);
 	let video = $state<HTMLVideoElement | null>(null);
 
+	$effect(() => {
+		if (video && watchMedia) {
+			const element = video;
+			const identity = watchMedia;
+			return untrack(() => together.attach(element, () => identity));
+		}
+	});
+	$effect(() => {
+		if (watchMedia && video) {
+			const identity = watchMedia;
+			untrack(() => together.updateMedia(identity));
+		}
+	});
 	let fatalError = $state<string | null>(null);
 	$effect(() => {
 		if (fatalError) {

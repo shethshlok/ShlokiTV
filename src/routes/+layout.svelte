@@ -5,6 +5,7 @@
 	import TopLoadingBar from "#lib/components/chrome/top-loading-bar.svelte";
 	import { Toaster } from "#lib/components/ui/sonner/index.js";
 	import { pageTitle } from "#lib/core/title.svelte.js";
+	import RoomPanel from "#lib/watch-together/room-panel.svelte";
 	import { browser } from "$app/env";
 	import { beforeNavigate, onNavigate } from "$app/navigation";
 
@@ -85,3 +86,5 @@
 <SmallScreenNotice />
 
 {@render children()}
+
+<RoomPanel />

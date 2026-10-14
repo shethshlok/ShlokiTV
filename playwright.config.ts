@@ -51,8 +51,13 @@ export default defineConfig({
 	projects: [
 		{
 			name: "chromium",
-			testIgnore: /showcase\.spec\.ts/,
+			testIgnore: /showcase\.spec\.ts|watch-together-mobile\.spec\.ts/,
 			use: { ...devices["Desktop Chrome"] },
+		},
+		{
+			name: "watch-mobile-webkit",
+			testMatch: /watch-together-mobile\.spec\.ts/,
+			use: { ...devices["iPhone 13"] },
 		},
 		// Dedicated showcase-screenshot sequence : deliberately excluded from the
 		// default `chromium` project (and so from `bun run test:e2e`). Run it on

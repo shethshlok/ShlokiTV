@@ -59,7 +59,7 @@ function applySecurityHeaders(headers: Headers): void {
 	headers.set("referrer-policy", "strict-origin-when-cross-origin");
 	headers.set(
 		"permissions-policy",
-		"camera=(), microphone=(), geolocation=(), browsing-topics=()",
+		"camera=(self), microphone=(self), geolocation=(), browsing-topics=()",
 	);
 	if (!dev) {
 		headers.set(

@@ -23,6 +23,7 @@ export interface SubtitleAppearance {
 
 export interface VideoPlayerProps {
 	src: string;
+	watchMedia?: import("#lib/watch-together/types.js").RoomMedia;
 	/** Backdrop image : loading treatment, `<video poster>`, info-overlay bed. */
 	poster?: string | null;
 	/** 2:3 poster shown in the info overlay. */

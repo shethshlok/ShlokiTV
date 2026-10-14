@@ -1,4 +1,5 @@
 import { onDestroy } from "svelte";
+import { together } from "#lib/watch-together/client.svelte.js";
 
 const CHANNEL_NAME = "nuvio-player-tabs";
 
@@ -19,13 +20,17 @@ export function createPlayerBroadcastSync(deps: {
 	const channel = new BroadcastChannel(CHANNEL_NAME);
 
 	channel.onmessage = (event) => {
-		if (event.data?.type === "playing" && event.data.tabId !== tabId) {
+		if (
+			!together.membership &&
+			event.data?.type === "playing" &&
+			event.data.tabId !== tabId
+		) {
 			deps.video()?.pause();
 		}
 	};
 
 	$effect(() => {
-		if (!deps.paused()) {
+		if (!(together.membership || deps.paused())) {
 			channel.postMessage({ type: "playing", tabId });
 		}
 	});

@@ -24,6 +24,7 @@
 	import type { createPlayerTransportActions } from "#lib/player/state/transport-actions.svelte.js";
 	import type { PlayerTransportState } from "#lib/player/state/transport-state.svelte.js";
 	import { cn } from "#lib/utils.js";
+	import { together } from "#lib/watch-together/client.svelte.js";
 	import OptionMenu from "./option-menu.svelte";
 
 	const RATES = [0.5, 0.75, 1, 1.25, 1.5, 2];
@@ -228,7 +229,7 @@
         label: rate === 1 ? m.player_speed_normal() : `${rate}×`,
       }))}
       value={String(transport.rate)}
-      onSelect={(value) => (transport.rate = Number(value))}
+      onSelect={(value) => {if(together.room)together.setRate(Number(value));else transport.rate=Number(value);}}
       active={transport.rate !== 1}
     >
       <GaugeIcon />

@@ -126,6 +126,7 @@
   {/if}
   <VideoPlayer
     {src}
+    watchMedia={{type:"movie",id:page.url.searchParams.get("id")??"fixture",title:"Player harness",label:page.url.searchParams.get("label")??"Test release",duration:0}}
     {fill}
     {drawerOpen}
     title="Player harness"

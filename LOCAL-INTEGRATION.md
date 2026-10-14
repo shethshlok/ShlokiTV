@@ -1,9 +1,9 @@
 # ShlokiTV production fork
 
-Site: https://tv.shloksheth.tech
-Fork: https://github.com/shethshlok/ShlokiTV
+Site: <https://tv.shloksheth.tech>
+Fork: <https://github.com/shethshlok/ShlokiTV>
 Production branch: `shlokitv`
-Upstream: https://github.com/orochibraru/nuvio-web
+Upstream: <https://github.com/orochibraru/nuvio-web>
 
 ## Source ownership
 
@@ -112,3 +112,64 @@ Rollback image tags: `nuvio-next-ui:rollback` and `nuvio-scraper-bridge:rollback
 Runtime backups: `.runtime-config/rollback-compose.yaml` and
 `.runtime-config/rollback-domain.conf`. Earlier domain-cutover backups remain in
 `../NuvioWeb-Backups`; they do not run.
+
+## Watch together
+
+The web player includes native rooms for two signed-in viewers. Start a playable
+movie or episode, open **Watch together**, create a room, and share its invite
+link. The other viewer signs in with their own account and resolves their own
+sources. Stream URLs and addon credentials are never sent to the room.
+
+Playback controls, skipping the intro, speed and host title changes use the
+server's shared timeline. Playback waits while either player is loading or
+reconnecting. Release filenames and sizes, when provided by addons, can select
+a matching guest source. A different running time prompts the guest to select
+the correct release or explicitly accept the difference. Equal durations alone
+do not prove two files have the same cut.
+
+Rooms live in the single UI process, expire after twelve hours, and end when both
+viewers leave. Reloads and short connection interruptions retain membership;
+an absent host is removed after 45 seconds and the remaining viewer becomes the
+host. Restarting or deploying the UI ends its rooms. The client reports an ended
+room instead of reconnecting indefinitely. Multiple UI replicas would require a
+shared room store before enabling this feature across them.
+
+### Camera and microphone
+
+Each viewer explicitly presses **Join video call** to grant browser permission.
+The call is a two-peer WebRTC connection with offer-collision handling and ICE
+restart. Camera/microphone capture stops on leaving the call or losing the room
+connection. Closing the controls keeps small call tiles and audio available.
+Camera and microphone permissions are limited to this site's origin. HTTPS is
+required outside localhost.
+
+A public STUN server is configured for direct connections. For dependable calls
+on mobile or restricted networks, configure a TURN relay in the ignored file
+`.runtime-config/watch-together.env`. Compose loads that optional file into the
+UI service. It is not copied into source control. Example with placeholders:
+
+    SHLOKITV_ICE_SERVERS='[{"urls":"stun:stun.cloudflare.com:3478"},{"urls":["turn:turn.example.com:3478?transport=udp","turns:turn.example.com:5349?transport=tcp"],"username":"YOUR_USERNAME","credential":"YOUR_CREDENTIAL"}]'
+
+Use credentials from your TURN provider or your reachable coturn installation.
+The authenticated room clients receive this ICE configuration. The TURN service
+must be reachable independently of the HTTP Cloudflare tunnel. Do not publish
+real credentials in Git. The room panel reports when no TURN relay is configured.
+Changing this file requires recreating the UI container through the normal
+deployment workflow.
+
+### Validation
+
+The focused watch-room tests cover membership authorization, capacity, shared
+playback, buffering, revision checks, source replacement, host transfer and
+consent before signaling. The browser harness uses two independent sessions and
+a phone-sized viewport to check playback, pause/seek, reload/reconnection,
+actual synthetic audio/video tracks, mute/camera controls and cleanup:
+
+    bun --bun node_modules/vitest/vitest.mjs run src/lib/watch-together
+    bun x playwright test e2e/watch-together.spec.ts --project=chromium
+    bun x playwright test e2e/watch-together-mobile.spec.ts --project=watch-mobile-webkit
+
+The fixtures use the real player and room API, with the existing gated E2E session
+route. They do not require real account credentials or third-party streams.
+Synthetic devices and mobile emulation do not replace testing physical phones
+on separate mobile networks with the production TURN relay.

@@ -41,6 +41,7 @@
 		resumeRowFor,
 		titleProgressFor,
 	} from "#lib/watch/playback-context.js";
+	import { sourceLoading } from "#lib/watch/source-loading.svelte.js";
 	import { sourcesPanel } from "#lib/watch/sources-panel.svelte.js";
 	import {
 		audioSupport,
@@ -49,10 +50,11 @@
 		riskyVideoCodec,
 	} from "#lib/watch/stream-format.js";
 	import { getSubtitles, resolveStreams } from "#lib/watch/watch.remote.js";
-	import { sourceLoading } from "#lib/watch/source-loading.svelte.js";
 	import { EMPTY_PROVIDERS } from "#lib/watch/watch-providers.js";
 	import { watchProviders } from "#lib/watch/watch-providers.remote.js";
 	import WatchProvidersList from "#lib/watch/watch-providers-list.svelte";
+	import { together } from "#lib/watch-together/client.svelte.js";
+	import { matchingSource } from "#lib/watch-together/source-match.js";
 	import { browser } from "$app/env";
 	import { goto, replaceState } from "$app/navigation";
 	import { resolve } from "$app/paths";
@@ -176,12 +178,17 @@
 				if (id !== videoId || active?.url !== failedUrl) {
 					return;
 				}
-				const candidates = result.streams.filter((stream) =>
-					stream.url?.startsWith("https:") && !stream.notWebReady &&
-					!failedSources.has(stream.url) &&
-					browserCanPlayCodec(riskyVideoCodec(stream)) !== "unsupported",
+				const candidates = result.streams.filter(
+					(stream) =>
+						stream.url?.startsWith("https:") &&
+						!stream.notWebReady &&
+						!failedSources.has(stream.url) &&
+						browserCanPlayCodec(riskyVideoCodec(stream)) !== "unsupported",
 				);
-				const next = pickPreferredStream(candidates, theme.current.preferredQuality);
+				const next = pickPreferredStream(
+					candidates,
+					theme.current.preferredQuality,
+				);
 				if (next) {
 					playbackHandoff.select(videoId, next, describeStream(next).title);
 					return;
@@ -294,19 +301,34 @@
 	const streamsQuery = $derived(
 		offlineSrc ? undefined : resolveStreams({ type, id }),
 	);
-	const sourceSearch = sourceLoading(() => streamsQuery, () => `${type}:${id}`);
+	const sourceSearch = sourceLoading(
+		() => streamsQuery,
+		() => `${type}:${id}`,
+	);
 	const autoStream = $derived(
-		pickPreferredStream(
-			streamsQuery?.current?.streams ?? [],
-			theme.current.preferredQuality,
-			sourceSearch.searching,
-		),
+		(!together.host && together.room?.media.id === id
+			? matchingSource(
+					together.room.media,
+					streamsQuery?.current?.streams ?? [],
+				)
+			: null) ??
+			pickPreferredStream(
+				streamsQuery?.current?.streams ?? [],
+				theme.current.preferredQuality,
+				sourceSearch.searching,
+			),
 	);
 	// Lock the automatic choice after discovery. Manual picks take precedence,
 	// while the query continues polling for sources in the background.
 	$effect(() => {
 		if (!handed && autoStream?.url && !autoStream.notWebReady) {
-			untrack(() => playbackHandoff.select(id, autoStream, describeStream(autoStream).title));
+			untrack(() =>
+				playbackHandoff.select(
+					id,
+					autoStream,
+					describeStream(autoStream).title,
+				),
+			);
 		}
 	});
 
@@ -322,6 +344,8 @@
 				label: describeStream(autoStream).title,
 				addonName: autoStream.addonName,
 				infoHash: autoStream.infoHash,
+				filename: autoStream.filename,
+				fileSize: autoStream.fileSize,
 			};
 		}
 		return null;
@@ -355,9 +379,11 @@
 	);
 	// Both rejected queries and empty results with addon errors need a retry
 	// screen after automatic retries, rather than a "no playable stream" message.
-	const streamsError = $derived(!handed && (sourceSearch.failed || sourceSearch.expired));
+	const streamsError = $derived(
+		!handed && (sourceSearch.failed || sourceSearch.expired),
+	);
 	const resolving = $derived(
-		!handed && !offlineSrc && !active && sourceSearch.searching,
+		!(handed || offlineSrc || active) && sourceSearch.searching,
 	);
 
 	// Official "where to watch" : the fallback when no addon stream plays here.
@@ -768,6 +794,7 @@
     {#key `${playableSrc}:${replayNonce}`}
       <VideoPlayer
         src={playableSrc}
+        watchMedia={{type,id,title:context.heading,label:active?.label??"",duration:0,filename:active?.filename,infoHash:active?.infoHash,fileSize:active?.fileSize}}
         fill
         drawerOpen={Boolean(sourcesPanel.target) || episodesOpen}
         poster={context.background ?? context.poster}
@@ -806,8 +833,8 @@
         minimized={endOfShow}
         onSourceFailure={recoverSource}
         onProgress={report}
-        onEnded={() => reachedEnd(true)}
-        onOutro={() => reachedEnd(false)}
+        onEnded={() => {if(!together.room || together.host)reachedEnd(true);}}
+        onOutro={() => {if(!together.room)reachedEnd(false);}}
         onBack={goBack}
         onSources={openSources}
         onSubtitleAppearance={saveSubtitleAppearance}

@@ -1,3 +1,4 @@
+import { together } from "#lib/watch-together/client.svelte.js";
 import type { PlayerTransportState } from "./transport-state.svelte.ts";
 
 /**
@@ -29,6 +30,10 @@ export function createPlaybackMilestones(deps: {
 		const video = deps.video();
 		const introEnd = deps.introEnd();
 		if (video && introEnd != null) {
+			if (together.room) {
+				together.seekTo(introEnd);
+				return;
+			}
 			video.currentTime = introEnd;
 			void video.play();
 		}
