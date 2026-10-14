@@ -246,7 +246,7 @@ describe("room persistence", () => {
 		expect(state?.playing).toBe(false);
 		// The clock was held for the guest, who had not loaded yet.
 		expect(state?.position).toBe(30);
-		expect(state?.media.id).toBe("tt1");
+		expect(state?.media?.id).toBe("tt1");
 		await rm(directory, { recursive: true, force: true });
 	});
 	it("starts empty when the saved file is unreadable", async () => {
@@ -256,6 +256,113 @@ describe("room persistence", () => {
 		const rooms = new WatchRooms();
 		expect(() => rooms.useStore(directory)).not.toThrow();
 		expect(() => rooms.join("NOPE", "u1", "Guest")).toThrow();
+		await rm(directory, { recursive: true, force: true });
+	});
+});
+
+describe("lobby rooms", () => {
+	function lobby() {
+		const now = 1000;
+		const rooms = new WatchRooms(() => now);
+		const host = rooms.create("u1", "Host", null);
+		const guest = rooms.join(host.code, "u2", "Guest");
+		let state: RoomSnapshot | undefined;
+		rooms.connect(host.code, host.member, host.token, "u1", (event, value) => {
+			if (event === "state") {
+				state = value as RoomSnapshot;
+			}
+		});
+		rooms.connect(guest.code, guest.member, guest.token, "u2", () => {});
+		return {
+			rooms,
+			host,
+			guest,
+			get state() {
+				return state as RoomSnapshot;
+			},
+		};
+	}
+
+	it("connects two viewers before anything is picked, without starting a clock", () => {
+		const room = lobby();
+		expect(room.state.media).toBeNull();
+		expect(room.state.members).toHaveLength(2);
+		expect(room.state.playing).toBe(false);
+		expect(room.rooms.preview(room.host.code)).toEqual({
+			host: "Host",
+			title: null,
+			members: 2,
+			full: true,
+		});
+	});
+
+	it("lets either viewer pick the first title, keeps their place, and makes them host", () => {
+		const room = lobby();
+		room.rooms.command(
+			room.guest.code,
+			room.guest.member,
+			room.guest.token,
+			"u2",
+			{
+				action: "media",
+				revision: room.state.revision,
+				media,
+				position: 42,
+			},
+		);
+		expect(room.state.media).toEqual(media);
+		expect(room.state.host).toBe(room.guest.member);
+		expect(room.state.position).toBe(42);
+		expect(room.state.requestedPlaying).toBe(true);
+		// Once a title is set, only its host can change it.
+		expect(() =>
+			room.rooms.command(
+				room.host.code,
+				room.host.member,
+				room.host.token,
+				"u1",
+				{
+					action: "media",
+					revision: room.state.revision,
+					media: { ...media, id: "tt2" },
+				},
+			),
+		).toThrow();
+		expect(room.rooms.preview(room.host.code).title).toBe("Movie");
+	});
+
+	it("goes back to the lobby when the host clears the title", () => {
+		const room = lobby();
+		const pick = (
+			member: typeof room.host,
+			user: string,
+			next: RoomMedia | null,
+		) =>
+			room.rooms.command(member.code, member.member, member.token, user, {
+				action: "media",
+				revision: room.state.revision,
+				media: next,
+			});
+		pick(room.host, "u1", media);
+		pick(room.host, "u1", null);
+		expect(room.state.media).toBeNull();
+		expect(room.state.requestedPlaying).toBe(false);
+		expect(room.state.position).toBe(0);
+		pick(room.guest, "u2", media);
+		expect(room.state.host).toBe(room.guest.member);
+	});
+
+	it("survives a restart as a lobby", async () => {
+		const directory = await mkdtemp(path.join(tmpdir(), "lobby-"));
+		const rooms = new WatchRooms();
+		rooms.useStore(directory);
+		const host = rooms.create("u1", "Host", null);
+		await vi.waitFor(() =>
+			readFile(path.join(directory, "watch-together", "rooms.json"), "utf8"),
+		);
+		const restarted = new WatchRooms();
+		restarted.useStore(directory);
+		expect(restarted.preview(host.code).title).toBeNull();
 		await rm(directory, { recursive: true, force: true });
 	});
 });

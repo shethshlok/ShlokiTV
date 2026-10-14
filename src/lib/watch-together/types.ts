@@ -18,7 +18,8 @@ export interface RoomMember {
 export interface RoomSnapshot {
 	code: string;
 	host: string;
-	media: RoomMedia;
+	/** Null while the room is a lobby: connected, but nothing picked yet. */
+	media: RoomMedia | null;
 	revision: number;
 	sequence: number;
 	position: number;
@@ -39,7 +40,7 @@ export interface CallSignal {
 }
 export function roomPosition(room: RoomSnapshot, now: number): number {
 	return Math.min(
-		room.media.duration || Number.POSITIVE_INFINITY,
+		room.media?.duration || Number.POSITIVE_INFINITY,
 		Math.max(
 			0,
 			room.position +
@@ -60,4 +61,10 @@ export function syncAdjustment(gap: number, rate: number) {
 				? rate * (1 + Math.max(-0.05, Math.min(0.05, gap / 20)))
 				: rate,
 	};
+}
+export interface RoomPreview {
+	host: string;
+	title: string | null;
+	members: number;
+	full: boolean;
 }

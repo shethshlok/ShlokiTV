@@ -1,9 +1,9 @@
 // biome-ignore-all lint/suspicious/noUnnecessaryConditions: Browser callbacks mutate these private flags and counters asynchronously; static narrowing cannot track those writes.
 
-import { WatchCall } from "./call.js";
+import { openCamera, setTracks, WatchCall } from "./call.js";
 import { PlaybackReporter, type PlaybackSample } from "./diagnostics.js";
 import { loadMembership, saveMembership } from "./membership-store.js";
-import { hasPlaybackData } from "./readiness.js";
+import { hasPlaybackData, titleUpdate } from "./readiness.js";
 import {
 	type CallSignal,
 	type Membership,
@@ -55,9 +55,11 @@ class WatchTogether {
 	private iceServers: RTCIceServer[] = [
 		{ urls: "stun:stun.cloudflare.com:3478" },
 	];
-	private callStarting = false;
+	callStarting = $state(false);
 	private retry: ReturnType<typeof setTimeout> | undefined;
 	private retries = 0;
+	/** A player still open when the room went back to the lobby; it must not re-pick its title. */
+	private stale: HTMLVideoElement | null = null;
 	get host() {
 		return !!this.membership && this.room?.host === this.membership.member;
 	}
@@ -138,6 +140,10 @@ class WatchTogether {
 		this.events?.close();
 		this.events = null;
 		clearInterval(this.timer);
+		this.hold();
+	}
+	/** Stop playing and calling until the room is back. */
+	private hold() {
 		this.connected = false;
 		this.stopCall();
 		this.reportedReady = undefined;
@@ -148,17 +154,26 @@ class WatchTogether {
 		this.membership = loadMembership();
 		this.connect();
 	}
+	/** Starts with the open title, or as a lobby when nothing is playing. */
 	async create(name: string) {
-		if (!(this.media && this.video && Number.isFinite(this.video.duration))) {
-			throw new Error("Start a playable movie or episode first.");
-		}
+		const video = this.video,
+			media = this.media;
+		const playable =
+			!!video &&
+			!!media &&
+			Number.isFinite(video.duration) &&
+			video.duration > 0;
 		await this.leave();
 		this.membership = await this.request({
 			action: "create",
 			name,
-			media: { ...this.media, duration: this.video.duration },
-			position: this.video.currentTime,
-			playing: !this.video.paused,
+			...(playable
+				? {
+						media: { ...media, duration: video.duration },
+						position: video.currentTime,
+						playing: !video.paused,
+					}
+				: {}),
 		});
 		saveMembership(this.membership);
 		this.connect();
@@ -190,6 +205,10 @@ class WatchTogether {
 				return;
 			}
 			const changed = this.room?.revision !== room.revision;
+			if (this.room?.media && !room.media) {
+				this.stale = this.video;
+				this.stale?.pause();
+			}
 			this.room = room;
 			this.diagnostics.stateReceivedAt = Date.now();
 			this.connected = true;
@@ -243,11 +262,7 @@ class WatchTogether {
 					},
 				);
 			}
-			this.connected = false;
-			this.stopCall();
-			this.reportedReady = undefined;
-			this.suppressUntil = performance.now() + 1000;
-			this.video?.pause();
+			this.hold();
 			// A 5xx while the server restarts closes the stream for good: reopen it.
 			if (events.readyState === EventSource.CLOSED && membership) {
 				clearTimeout(this.retry);
@@ -297,6 +312,7 @@ class WatchTogether {
 	}
 	attach(video: HTMLVideoElement, media: () => RoomMedia) {
 		this.detach();
+		this.stale = null;
 		this.video = video;
 		this.media = media();
 		this.reportedReady = undefined;
@@ -389,6 +405,9 @@ class WatchTogether {
 		return this.detach;
 	}
 	updateMedia(media: RoomMedia) {
+		if (media.id !== this.media?.id || media.type !== this.media.type) {
+			this.stale = null;
+		}
 		this.media = media;
 		this.tick();
 	}
@@ -399,31 +418,21 @@ class WatchTogether {
 		if (!(room && this.connected)) {
 			return;
 		}
-		if (
-			this.host &&
-			video &&
-			media &&
-			Number.isFinite(video.duration) &&
-			video.duration > 0 &&
+		const update =
 			!this.pending &&
 			Date.now() - this.mediaSentAt > 3000 &&
-			(room.media.id !== media.id ||
-				room.media.type !== media.type ||
-				room.media.label !== media.label ||
-				room.media.title !== media.title ||
-				Math.abs(room.media.duration - video.duration) > 0.5)
-		) {
+			(room.media ? this.host : video !== this.stale) &&
+			titleUpdate(room, media, video);
+		if (update) {
 			this.mediaSentAt = Date.now();
-			void this.command({
-				action: "media",
-				media: { ...media, duration: video.duration },
-			});
+			void this.command({ action: "media", ...update });
 			return;
 		}
 		const same =
-			!!media && media.id === room.media.id && media.type === room.media.type;
+			!!media && media.id === room.media?.id && media.type === room.media.type;
 		this.mismatch =
 			!!video &&
+			!!room.media &&
 			Number.isFinite(video.duration) &&
 			room.media.duration > 0 &&
 			Math.abs(video.duration - room.media.duration) > 2;
@@ -454,7 +463,7 @@ class WatchTogether {
 			!(video && room && this.connected) ||
 			this.pending ||
 			!this.media ||
-			this.media.id !== room.media.id ||
+			this.media.id !== room.media?.id ||
 			this.media.type !== room.media.type
 		) {
 			return;
@@ -518,7 +527,7 @@ class WatchTogether {
 				position: Math.max(
 					0,
 					Math.min(
-						this.room.media.duration || Number.POSITIVE_INFINITY,
+						this.room.media?.duration || Number.POSITIVE_INFINITY,
 						position,
 					),
 				),
@@ -572,6 +581,12 @@ class WatchTogether {
 		});
 	}
 
+	/** Host only: stop the title and go back to choosing one together. */
+	async backToLobby() {
+		this.stale = this.video;
+		this.video?.pause();
+		await this.command({ action: "media", media: null });
+	}
 	acceptMismatch() {
 		this.acceptedMismatch = true;
 		this.tick();
@@ -584,14 +599,7 @@ class WatchTogether {
 		this.callStatus = "Requesting camera and microphone";
 		try {
 			const membership = this.membership;
-			const stream = await navigator.mediaDevices.getUserMedia({
-				audio: { echoCancellation: true, noiseSuppression: true },
-				video: {
-					width: { ideal: 320 },
-					height: { ideal: 240 },
-					facingMode: "user",
-				},
-			});
+			const stream = await openCamera();
 			if (!this.connected || this.membership !== membership) {
 				for (const track of stream.getTracks()) {
 					track.stop();
@@ -661,15 +669,11 @@ class WatchTogether {
 	}
 	toggleMic() {
 		this.micEnabled = !this.micEnabled;
-		for (const track of this.localStream?.getAudioTracks() ?? []) {
-			track.enabled = this.micEnabled;
-		}
+		setTracks(this.localStream?.getAudioTracks(), this.micEnabled);
 	}
 	toggleCamera() {
 		this.cameraEnabled = !this.cameraEnabled;
-		for (const track of this.localStream?.getVideoTracks() ?? []) {
-			track.enabled = this.cameraEnabled;
-		}
+		setTracks(this.localStream?.getVideoTracks(), this.cameraEnabled);
 	}
 }
 export const together = new WatchTogether();

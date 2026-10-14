@@ -1,6 +1,27 @@
 // biome-ignore-all lint/suspicious/noUnnecessaryConditions: Browser callbacks mutate these private flags and counters asynchronously; static narrowing cannot track those writes.
 import type { CallSignal } from "./types.js";
 
+/** A small, echo-cancelled front camera and microphone for the call tiles. */
+export function openCamera() {
+	return navigator.mediaDevices.getUserMedia({
+		audio: { echoCancellation: true, noiseSuppression: true },
+		video: {
+			width: { ideal: 320 },
+			height: { ideal: 240 },
+			facingMode: "user",
+		},
+	});
+}
+
+export function setTracks(
+	tracks: MediaStreamTrack[] | undefined,
+	enabled: boolean,
+) {
+	for (const track of tracks ?? []) {
+		track.enabled = enabled;
+	}
+}
+
 /** Two-peer perfect negotiation. The guest is polite when offers collide. */
 export class WatchCall {
 	readonly peer: RTCPeerConnection;

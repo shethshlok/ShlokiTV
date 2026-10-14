@@ -36,6 +36,7 @@
 	import { sync } from "#lib/sync/store.svelte.js";
 	import { syncOwner } from "#lib/sync/types.js";
 	import { cn } from "#lib/utils.js";
+	import RoomButton from "#lib/watch-together/room-button.svelte";
 	import { afterNavigate } from "$app/navigation";
 	import { resolve } from "$app/paths";
 	import { page } from "$app/state";
@@ -352,6 +353,8 @@
                         ⌘K
                     </kbd>
                 </a>
+
+                <RoomButton />
 
                 <DropdownMenu.Root>
                     <DropdownMenu.Trigger

@@ -306,7 +306,7 @@
 		() => `${type}:${id}`,
 	);
 	const autoStream = $derived(
-		(!together.host && together.room?.media.id === id
+		(!together.host && together.room?.media?.id === id
 			? matchingSource(
 					together.room.media,
 					streamsQuery?.current?.streams ?? [],

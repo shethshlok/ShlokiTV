@@ -6,6 +6,7 @@ import { error } from "@sveltejs/kit";
 import {
 	type RoomMedia,
 	type RoomMember,
+	type RoomPreview,
 	type RoomSnapshot,
 	roomPosition,
 } from "./types.js";
@@ -21,7 +22,7 @@ interface Member extends RoomMember {
 interface Room {
 	code: string;
 	host: string;
-	media: RoomMedia;
+	media: RoomMedia | null;
 	revision: number;
 	sequence: number;
 	position: number;
@@ -138,6 +139,7 @@ export class WatchRooms {
 		room.position = roomPosition(this.snapshot(room), this.now());
 		room.updated = this.now();
 		room.playing =
+			!!room.media &&
 			room.requestedPlaying &&
 			[...room.members.values()].every((m) => m.ready && m.connected);
 		room.sequence++;
@@ -214,10 +216,21 @@ export class WatchRooms {
 		});
 		return { code: room.code, member: id, token };
 	}
+	/** What an invite leads to, shown before joining. */
+	preview(code: string): RoomPreview {
+		this.sweep();
+		const room = this.find(code);
+		return {
+			host: room.members.get(room.host)?.name ?? "Someone",
+			title: room.media?.title || null,
+			members: room.members.size,
+			full: room.members.size >= 2,
+		};
+	}
 	create(
 		user: string,
 		name: string,
-		media: RoomMedia,
+		media: RoomMedia | null,
 		start: { position?: number; playing?: boolean } = {},
 	) {
 		this.sweep();
@@ -236,13 +249,15 @@ export class WatchRooms {
 			media,
 			revision: 1,
 			sequence: 1,
-			position: Math.min(
-				media.duration || Number.POSITIVE_INFINITY,
-				Math.max(0, start.position ?? 0),
-			),
-			requestedPlaying: start.playing === true,
+			position: media
+				? Math.min(
+						media.duration || Number.POSITIVE_INFINITY,
+						Math.max(0, start.position ?? 0),
+					)
+				: 0,
+			requestedPlaying: !!media && start.playing === true,
 			// A host who is already playing has data; keep the clock running until they connect.
-			playing: start.playing === true,
+			playing: !!media && start.playing === true,
 			rate: 1,
 			updated: now,
 			created: now,
@@ -253,7 +268,7 @@ export class WatchRooms {
 		room.host = membership.member;
 		const host = room.members.get(membership.member);
 		if (host) {
-			host.ready = start.playing === true;
+			host.ready = !!media && start.playing === true;
 		}
 		this.rooms.set(room.code, room);
 		this.save();
@@ -302,6 +317,27 @@ export class WatchRooms {
 				this.update(room);
 			}
 		};
+	}
+	/** In a lobby, whoever picks the first title hosts it. */
+	private setMedia(room: Room, id: string, body: Record<string, unknown>) {
+		if (room.media && room.host !== id) {
+			error(403, "Only the host can change the title or episode.");
+		}
+		room.host = id;
+		const next = (body.media ?? null) as RoomMedia | null;
+		if (!next || next.id !== room.media?.id || next.type !== room.media.type) {
+			// A lobby pick keeps the picker's place, such as a resumed episode.
+			room.position =
+				next && !room.media && typeof body.position === "number"
+					? body.position
+					: 0;
+			room.requestedPlaying = !!next;
+		}
+		room.media = next;
+		room.revision++;
+		for (const m of room.members.values()) {
+			m.ready = false;
+		}
 	}
 	// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: All mutations share authorization, time advancement and one final broadcast.
 	// biome-ignore lint/complexity/useMaxParams: These are the four authorization fields plus the validated command.
@@ -389,27 +425,14 @@ export class WatchRooms {
 			case "rate":
 				room.rate = body.rate as number;
 				break;
-			case "media": {
-				if (room.host !== id) {
-					error(403, "Only the host can change the title or episode.");
-				}
-				const next = body.media as RoomMedia;
-				if (next.id !== room.media.id || next.type !== room.media.type) {
-					room.position = 0;
-					room.requestedPlaying = true;
-				}
-				room.media = next;
-				room.revision++;
-				for (const m of room.members.values()) {
-					m.ready = false;
-				}
+			case "media":
+				this.setMedia(room, id, body);
 				break;
-			}
 			default:
 				error(400, "Unknown room action.");
 		}
 		room.position = Math.min(
-			room.media.duration || Number.POSITIVE_INFINITY,
+			room.media?.duration || Number.POSITIVE_INFINITY,
 			Math.max(0, room.position),
 		);
 		this.update(room);

@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { type BrowserContext, expect, type Page, test } from "@playwright/test";
 
 test.use({
@@ -184,7 +185,10 @@ test("two independent viewers synchronize, reconnect, call, and clean up", async
 		await host
 			.getByRole("button", { name: "Leave watch room", exact: true })
 			.click();
-		await expect(guest.getByText("Guest · host · ready")).toBeVisible();
+		const viewers = guest.getByRole("list", { name: "Viewers" });
+		await expect(viewers.getByRole("listitem")).toHaveCount(2);
+		await expect(viewers).toContainText("Guest (you)");
+		await expect(viewers).toContainText("host · ready");
 	} finally {
 		await a.close();
 		await b.close();
@@ -352,4 +356,111 @@ test("watch together stays reachable in the player toolbar and fullscreen", asyn
 			.click();
 		await page.evaluate(() => document.exitFullscreen());
 	}
+});
+
+test("viewers connect before anything plays, then follow the first title picked", async ({
+	browser,
+	baseURL,
+}) => {
+	const a = await browser.newContext({ baseURL }),
+		b = await browser.newContext({ baseURL });
+	try {
+		await signIn(a, "lobby-host");
+		await signIn(b, "lobby-guest");
+		const host = await a.newPage(),
+			guest = await b.newPage();
+		await host.goto("/dev/watch-together");
+		// Retry until hydrated: a click on server-rendered markup does nothing.
+		await expect(async () => {
+			await host
+				.getByRole("button", { name: "Watch together", exact: true })
+				.click();
+			await expect(host.getByText(/pick something together/)).toBeVisible({
+				timeout: 1000,
+			});
+		}).toPass();
+		await host.getByRole("textbox", { name: "Your name" }).fill("Shlok");
+		await host.getByRole("button", { name: "Create watch room" }).click();
+		await expect(
+			host.getByText("Waiting for someone to join", { exact: true }),
+		).toBeVisible();
+		await expect(host.getByText("Nothing picked yet")).toBeVisible();
+		const link = await host
+			.getByRole("textbox", { name: "Watch room invite link" })
+			.inputValue();
+		const code = new URL(link).searchParams.get("room");
+		expect(code).toBeTruthy();
+		// The invite says who sent it and that nothing is playing yet.
+		await guest.goto(`/dev/watch-together?room=${code}`);
+		await expect(
+			guest.getByText("Shlok invited you to watch together"),
+		).toBeVisible();
+		await expect(guest.getByText(/Nothing picked yet/)).toBeVisible();
+		await guest.getByRole("textbox", { name: "Your name" }).fill("Friend");
+		await guest.getByRole("button", { name: "Join watch room" }).click();
+		for (const page of [host, guest]) {
+			await expect(
+				page.getByText("Pick something to watch", { exact: true }),
+			).toBeVisible();
+			await expect(
+				page.getByRole("list", { name: "Viewers" }).getByRole("listitem"),
+			).toHaveCount(2);
+			await expect(
+				page.getByRole("button", { name: "Watch room · 2/2" }),
+			).toBeVisible();
+		}
+		expect(new URL(guest.url()).searchParams.has("room")).toBe(false);
+		const audit = await new AxeBuilder({ page: host })
+			.include("#watch-room-controls")
+			.withTags(["wcag2a", "wcag2aa"])
+			.analyze();
+		expect(audit.violations).toEqual([]);
+		// Whoever plays something first fills the room; the other viewer is told what it is.
+		await guest.goto("/dev/player?id=lobby-pick");
+		await ready(guest);
+		await guest.getByRole("button", { name: /Watch room/ }).click();
+		await expect(guest.getByText("Waiting for Shlok to load")).toBeVisible();
+		await expect(host.getByText("Player harness")).toBeVisible();
+		await host.goto("/dev/player?id=lobby-pick");
+		await ready(host);
+		await host.getByRole("button", { name: /Watch room/ }).click();
+		await expect(
+			host.getByText("Ready to watch", { exact: true }),
+		).toBeVisible();
+		await host
+			.getByRole("button", { name: "Play together", exact: true })
+			.click();
+		for (const page of [host, guest]) {
+			await expect
+				.poll(() => movie(page).evaluate((v) => (v as HTMLVideoElement).paused))
+				.toBe(false);
+		}
+		// The picker hosts it, and can send everyone back to choose again.
+		await guest
+			.getByRole("button", { name: "Pick something else", exact: true })
+			.click();
+		for (const page of [host, guest]) {
+			await expect(
+				page.getByText("Pick something to watch", { exact: true }),
+			).toBeVisible();
+			await expect
+				.poll(() => movie(page).evaluate((v) => (v as HTMLVideoElement).paused))
+				.toBe(true);
+		}
+	} finally {
+		await a.close();
+		await b.close();
+	}
+});
+
+test("an expired invite explains itself and offers a new room", async ({
+	page,
+}) => {
+	await signIn(page.context(), "expired-invite");
+	await page.goto("/dev/watch-together?room=gone-for-good");
+	await expect(page.getByText(/That invite has expired/)).toBeVisible();
+	await expect(
+		page.getByRole("button", { name: "Create watch room" }),
+	).toBeVisible();
+	expect(new URL(page.url()).searchParams.has("room")).toBe(false);
 });

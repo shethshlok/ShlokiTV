@@ -63,8 +63,8 @@ it("records timing measurements without raw room, membership, media, or extra fi
 	for (const forbidden of [
 		room.code,
 		room.host,
-		room.media.title,
-		room.media.label,
+		String(room.media?.title),
+		String(room.media?.label),
 		"Private name",
 		"secret-token",
 		"https://secret/url",

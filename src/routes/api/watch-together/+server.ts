@@ -30,7 +30,7 @@ const bodySchema = v.object({
 	member: v.optional(text(24)),
 	token: v.optional(text(24)),
 	name: v.optional(text(40)),
-	media: v.optional(mediaSchema),
+	media: v.optional(v.nullable(mediaSchema)),
 	revision: v.optional(number(1, 1e9)),
 	position: v.optional(number(0, 86_400)),
 	rate: v.optional(number(0.5, 2)),
@@ -84,16 +84,20 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
 	const b = parsed.output,
 		user = locals.session.user.id;
 	if (b.action === "create") {
-		if (!b.media) {
-			error(400, "Choose a movie first.");
-		}
+		// Without a title the room opens as a lobby; the first title played fills it.
 		return json(
-			watchRooms.create(user, b.name?.trim() || "Host", b.media, {
+			watchRooms.create(user, b.name?.trim() || "Host", b.media ?? null, {
 				position: b.position,
 				playing: b.playing,
 			}),
 			{ headers },
 		);
+	}
+	if (b.action === "preview") {
+		if (!b.code) {
+			error(400, "Missing invite.");
+		}
+		return json(watchRooms.preview(b.code), { headers });
 	}
 	if (b.action === "join") {
 		if (!b.code) {
@@ -109,7 +113,7 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
 	if (
 		(b.action === "seek" && b.position === undefined) ||
 		(b.action === "rate" && b.rate === undefined) ||
-		(b.action === "media" && !b.media) ||
+		(b.action === "media" && b.media === undefined) ||
 		(b.action === "signal" && !(b.signal && b.target))
 	) {
 		error(400, "Incomplete room command.");
