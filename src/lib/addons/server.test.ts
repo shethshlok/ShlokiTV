@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AddonManifest } from "./types.ts";
 
+// Unconfigured, the scraper bridge hands ordinary addons the pinned fetch.
+vi.mock("./scraper-bridge.server.ts", async () => {
+	const { pinnedFetch } = await import("#lib/server/safe-fetch.js");
+	return { scraperAddon: () => [], scraperFetch: () => pinnedFetch };
+});
+
 const state = {
 	profileId: 7,
 	// Unique per test: the registry cache is module-level and keyed by
