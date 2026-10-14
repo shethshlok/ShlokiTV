@@ -99,11 +99,12 @@
 		// out of the top layer, leaving them unpainted and unclickable. When the
 		// player already owns the viewport, fullscreen the document instead :
 		// looks identical, and keeps those overlays inside the fullscreen subtree.
-		fullscreenTarget: () => (fill ? document.documentElement : container),
+		fullscreenTarget: () =>
+			fill || watchMedia ? document.documentElement : container,
 		video: () => video,
 		src: () => src,
 		startTime: () => startTime,
-		panelOpen: () => panels.panelOpen,
+		panelOpen: () => panels.panelOpen || together.panelOpen,
 		tryRemux: () => fixSource("container"),
 		onFatal: (message) => {
 			fatalError = message;
@@ -113,6 +114,11 @@
 	// `player.state` is the shared reactive transport object : read/write it
 	// directly (it's what `<video bind:paused>` etc. below are bound to).
 	const transport = player.state;
+	$effect(() => {
+		if (together.panelOpen) {
+			untrack(() => player.nudgeControls());
+		}
+	});
 
 	// Multi-tab coherence: starting playback here pauses this video in every
 	// other open tab.
@@ -341,6 +347,7 @@
   onmouseleave={() =>
     !transport.paused &&
     !panels.panelOpen &&
+    !together.panelOpen &&
     (transport.controlsVisible = false)}
 >
   <!-- svelte-ignore a11y_media_has_caption -->
@@ -412,6 +419,7 @@
   />
 
   <TransportControls
+    watchEnabled={Boolean(watchMedia)}
     {transport}
     {player}
     media={audioControls}

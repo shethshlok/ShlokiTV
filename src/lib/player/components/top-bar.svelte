@@ -2,9 +2,11 @@
 	import ArrowLeftIcon from "@lucide/svelte/icons/arrow-left";
 	import InfoIcon from "@lucide/svelte/icons/info";
 	import LayersIcon from "@lucide/svelte/icons/layers";
+	import UsersIcon from "@lucide/svelte/icons/users";
 	import { Button } from "#lib/components/ui/button/index.js";
 	import { m } from "#lib/i18n/index.js";
 	import { cn } from "#lib/utils.js";
+	import { together } from "#lib/watch-together/client.svelte.js";
 
 	let {
 		title,
@@ -14,6 +16,7 @@
 		onToggleInfo,
 		onBack,
 		onSources,
+		watchEnabled = false,
 	}: {
 		title: string;
 		subheading?: string | null;
@@ -22,10 +25,11 @@
 		onToggleInfo: () => void;
 		onBack?: () => void;
 		onSources?: () => void;
+		watchEnabled?: boolean;
 	} = $props();
 </script>
 
-<div class="pointer-events-auto flex items-start gap-3 p-3 sm:p-4">
+<div class="pointer-events-auto flex flex-wrap items-start gap-3 p-3 sm:p-4">
   {#if onBack}
     <Button
       variant="ghost"
@@ -44,6 +48,7 @@
       <p class="truncate text-sm text-muted-foreground">{subheading}</p>
     {/if}
   </div>
+  <div class={cn("ml-auto flex flex-wrap items-center justify-end gap-2 sm:w-auto", (hasInfo || onSources) && "w-full")}>
   {#if hasInfo}
     <Button
       variant="ghost"
@@ -72,4 +77,17 @@
       <LayersIcon data-icon="inline-start" />{m.common_sources()}
     </Button>
   {/if}
+  {#if watchEnabled}
+    <Button
+      variant="ghost"
+      aria-expanded={together.panelOpen}
+      aria-controls="watch-room-controls"
+      onclick={() => together.panelOpen = !together.panelOpen}
+      class="min-h-11 shrink-0 gap-1.5 rounded-full bg-white/10 px-3 text-white ring-1 ring-white/30 hover:bg-white/20 hover:text-white dark:hover:bg-white/20"
+    >
+      <UsersIcon class="size-4" />
+      {together.membership ? `Watch room · ${together.room?.members.length ?? 1}/2` : "Watch together"}
+    </Button>
+  {/if}
+  </div>
 </div>

@@ -87,11 +87,13 @@
 	);
 </script>
 
-{#if onPlayer || together.membership || invite}
- <aside class="fixed right-3 top-20 z-50 max-w-[calc(100vw-1.5rem)] text-white sm:top-4" aria-label="Watch together">
+{#if together.panelOpen || together.localStream || (!onPlayer && (together.membership || invite))}
+ <aside class="fixed right-3 top-32 z-50 max-w-[calc(100vw-1.5rem)] text-white sm:top-20" aria-label="Watch together">
+  {#if !onPlayer}
   <button type="button" class="min-h-11 rounded-full bg-black/80 px-4 py-2 text-sm shadow-lg ring-1 ring-white/30" aria-expanded={together.panelOpen} onclick={()=>together.panelOpen=!together.panelOpen}>
    {together.membership ? `Watch room · ${together.room?.members.length ?? 1}/2` : "Watch together"}
   </button>
+  {/if}
   {#if together.localStream && !together.panelOpen}
    <div class="mt-2 grid w-64 max-w-full grid-cols-2 gap-2 rounded-xl bg-black/90 p-2">
     <video data-testid="local-call" bind:this={localVideo} autoplay muted playsinline class="aspect-video w-full rounded-lg bg-black"></video>
@@ -102,7 +104,7 @@
    </div>
   {/if}
   {#if together.panelOpen}
-   <section class="mt-2 max-h-[70dvh] w-80 max-w-full overflow-y-auto rounded-2xl bg-zinc-950/95 p-4 text-sm shadow-xl ring-1 ring-white/20" aria-label="Watch room controls">
+   <section id="watch-room-controls" class="mt-2 max-h-[70dvh] w-80 max-w-full overflow-y-auto rounded-2xl bg-zinc-950/95 p-4 text-sm shadow-xl ring-1 ring-white/20" aria-label="Watch room controls">
     <div class="mb-3 flex items-center justify-between"><h2 class="font-semibold">Watch together</h2><button type="button" aria-label="Close watch room controls" class="min-h-10 min-w-10" onclick={()=>together.panelOpen=false}>✕</button></div>
     {#if !together.membership}
      <label class="block">Your name<input class="mt-1 mb-3 w-full rounded-lg bg-white/10 p-3" maxlength="40" bind:value={name} placeholder="Your name" /></label>

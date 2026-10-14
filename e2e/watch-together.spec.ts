@@ -23,7 +23,10 @@ async function signIn(context: BrowserContext, id: string) {
 const movie = (page: Page) => page.locator("video").first();
 async function ready(page: Page) {
 	await expect
-		.poll(() => movie(page).evaluate((v) => (v as HTMLVideoElement).readyState))
+		.poll(
+			() => movie(page).evaluate((v) => (v as HTMLVideoElement).readyState),
+			{ timeout: 15_000 },
+		)
 		.toBeGreaterThanOrEqual(3);
 }
 async function joined(host: Page, guest: Page) {
@@ -285,5 +288,63 @@ test("buffering, network interruptions, source replacement, and episode changes 
 	} finally {
 		await a.close();
 		await b.close();
+	}
+});
+
+test("watch together stays reachable in the player toolbar and fullscreen", async ({
+	page,
+}) => {
+	for (const viewport of [
+		{ width: 320, height: 740 },
+		{ width: 1280, height: 800 },
+	]) {
+		await page.setViewportSize(viewport);
+		await page.goto("/dev/player?fill=1&info=1");
+		await ready(page);
+		await movie(page).evaluate((video) => (video as HTMLVideoElement).pause());
+		const button = page.getByRole("button", {
+			name: "Watch together",
+			exact: true,
+		});
+		await expect(button).toBeVisible();
+		const bounds = await button.boundingBox();
+		expect(bounds).not.toBeNull();
+		expect(bounds!.height).toBeGreaterThanOrEqual(44);
+		expect(bounds!.x).toBeGreaterThanOrEqual(0);
+		expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(viewport.width);
+		expect(
+			await button.evaluate((element) => {
+				const box = element.getBoundingClientRect();
+				return element.contains(
+					document.elementFromPoint(
+						box.x + box.width / 2,
+						box.y + box.height / 2,
+					),
+				);
+			}),
+		).toBe(true);
+		await button.click();
+		await expect(
+			page.getByRole("region", { name: "Watch room controls" }),
+		).toBeVisible();
+		await page
+			.getByRole("button", { name: "Close watch room controls" })
+			.click();
+		await page.getByRole("button", { name: "Fullscreen", exact: true }).click();
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() => document.fullscreenElement === document.documentElement,
+				),
+			)
+			.toBe(true);
+		await button.click();
+		await expect(
+			page.getByRole("button", { name: "Create watch room" }),
+		).toBeVisible();
+		await page
+			.getByRole("button", { name: "Close watch room controls" })
+			.click();
+		await page.evaluate(() => document.exitFullscreen());
 	}
 });

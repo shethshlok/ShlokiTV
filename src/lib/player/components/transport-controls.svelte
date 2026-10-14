@@ -25,6 +25,7 @@
 		onToggleInfo,
 		onBack,
 		onSources,
+		watchEnabled = false,
 		bufferedRatio,
 		progressRatio,
 		chapters,
@@ -59,6 +60,7 @@
 		onToggleInfo: () => void;
 		onBack?: () => void;
 		onSources?: () => void;
+		watchEnabled?: boolean;
 		bufferedRatio: number;
 		progressRatio: number;
 		chapters: Chapter[];
@@ -96,6 +98,7 @@
     {onToggleInfo}
     {onBack}
     {onSources}
+    {watchEnabled}
   />
 
   <!-- Centre transport cluster : hidden while the info or subtitles overlay
