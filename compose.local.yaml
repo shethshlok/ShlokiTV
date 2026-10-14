@@ -21,7 +21,7 @@ services:
     ports:
       - '127.0.0.1:4181:3000'
     environment:
-      ORIGIN: https://tv.shloksheth.tech
+      PROTOCOL_HEADER: x-forwarded-proto
       NUVIO_SCRAPER_ORIGIN: http://scraper-bridge:3000
     volumes:
       - next-data:/app/data

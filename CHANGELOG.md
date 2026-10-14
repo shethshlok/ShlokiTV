@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.0.19](https://github.com/orochibraru/nuvio-web/compare/v1.0.18...v1.0.19) (2026-10-13)
+
+### Features
+
+* **detail:** random episode button for series (#33) ([f115c84](https://github.com/orochibraru/nuvio-web/commit/f115c8489a57a36d1af37dbfd1efaa6c98ae075c))
+
+## [1.0.18](https://github.com/orochibraru/nuvio-web/compare/v1.0.17...v1.0.18) (2026-10-05)
+
+### Features
+
+* fork e2e tests ([354d943](https://github.com/orochibraru/nuvio-web/commit/354d9433aa829fa500431d9fa746ca7144680d14))
+* sveltekit3 stable (#21) ([810404e](https://github.com/orochibraru/nuvio-web/commit/810404e849965939adfbf70f177d6e33f4e34155))
+
+### Bug Fixes
+
+* **transcoding:** audio selection for direct files without native track support (#22) ([2b589c1](https://github.com/orochibraru/nuvio-web/commit/2b589c100ec34a706b6b451c1ac269e03fc90b35))
+
 ## [1.0.17](https://github.com/orochibraru/nuvio-web/compare/v1.0.16...v1.0.17) (2026-10-02)
 
 ### Bug Fixes
