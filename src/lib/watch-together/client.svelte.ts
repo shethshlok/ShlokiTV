@@ -1,6 +1,7 @@
 // biome-ignore-all lint/suspicious/noUnnecessaryConditions: Browser callbacks mutate these private flags and counters asynchronously; static narrowing cannot track those writes.
 
 import { WatchCall } from "./call.js";
+import { PlaybackReporter, type PlaybackSample } from "./diagnostics.js";
 import { hasPlaybackData } from "./readiness.js";
 import {
 	type CallSignal,
@@ -38,6 +39,9 @@ class WatchTogether {
 	private suppressUntil = 0;
 	private offset = 0;
 	private heartbeatAt = 0;
+	private readonly diagnostics = new PlaybackReporter((body) =>
+		this.request(body),
+	);
 	private unlocking = false;
 	private pending = 0;
 	private queue = Promise.resolve();
@@ -63,6 +67,9 @@ class WatchTogether {
 			signal: AbortSignal.timeout(8000),
 		});
 		const data = await response.json();
+		if (body.action !== "diagnostics") {
+			this.diagnostics.rttMs = Date.now() - sent;
+		}
 		if (!response.ok) {
 			const error = new Error(
 				data.message ?? "The room request failed.",
@@ -70,7 +77,7 @@ class WatchTogether {
 			error.status = response.status;
 			throw error;
 		}
-		if (typeof data.serverTime === "number") {
+		if (body.action !== "diagnostics" && typeof data.serverTime === "number") {
 			this.offset = data.serverTime - (sent + Date.now()) / 2;
 		}
 		return data;
@@ -207,6 +214,7 @@ class WatchTogether {
 			}
 			const changed = this.room?.revision !== room.revision;
 			this.room = room;
+			this.diagnostics.stateReceivedAt = Date.now();
 			this.connected = true;
 			if (changed) {
 				this.acceptedMismatch = false;
@@ -355,7 +363,12 @@ class WatchTogether {
 			"emptied",
 			"error",
 		]) {
-			handlers[event] = () => this.tick();
+			handlers[event] = () => {
+				if (event === "waiting") {
+					this.diagnostic("buffering");
+				}
+				this.tick();
+			};
 		}
 		for (const [event, handler] of Object.entries(handlers)) {
 			video.addEventListener(event, handler);
@@ -430,6 +443,9 @@ class WatchTogether {
 			void this.command({ action: "heartbeat", ready });
 		}
 		this.apply();
+		if (Date.now() - this.diagnostics.at >= 10_000) {
+			this.diagnostic("sample");
+		}
 	}
 	private apply() {
 		const video = this.video,
@@ -468,6 +484,7 @@ class WatchTogether {
 			((!room.playing && Math.abs(gap) > 0.15) || adjustment.seek) &&
 			!video.seeking
 		) {
+			this.diagnostic("drift-correction");
 			video.currentTime = target;
 		}
 		video.playbackRate = room.playing ? adjustment.rate : room.rate;
@@ -523,6 +540,7 @@ class WatchTogether {
 			: this.room
 				? roomPosition(this.room, Date.now() + this.offset)
 				: video.currentTime;
+		this.diagnostic("play-tap");
 		this.blocked = false;
 		this.unlocking = true;
 		this.suppressUntil = performance.now() + 700;
@@ -531,12 +549,27 @@ class WatchTogether {
 			// can deadlock when another viewer is buffering and the shared clock is paused.
 			const started = video.play();
 			await Promise.all([started, this.command({ action: "play", position })]);
+			this.diagnostic("play-started");
 		} catch {
 			this.blocked = this.room?.requestedPlaying === true && video.paused;
+			this.diagnostic("play-blocked");
 		} finally {
 			this.unlocking = false;
 			this.tick();
 		}
+	}
+
+	private diagnostic(event: PlaybackSample["event"]) {
+		this.diagnostics.report({
+			event,
+			membership: this.membership,
+			room: this.room,
+			video: this.video,
+			connected: this.connected,
+			offset: this.offset,
+			blocked: this.blocked,
+			mismatch: this.mismatch,
+		});
 	}
 
 	acceptMismatch() {

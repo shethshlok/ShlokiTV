@@ -173,3 +173,25 @@ The fixtures use the real player and room API, with the existing gated E2E sessi
 route. They do not require real account credentials or third-party streams.
 Synthetic devices and mobile emulation do not replace testing physical phones
 on separate mobile networks with the production TURN relay.
+
+### Playback diagnostics
+
+Authenticated room members send timing samples every ten seconds, plus play,
+buffering and drift-correction events. The UI writes these asynchronously into
+`/app/data/watch-together/playback.jsonl` on the existing persistent data volume.
+The current file and one rotated backup each hold at most about 3 MiB. Logging
+failures do not block playback. Telemetry does not adjust the playback clock.
+
+Records contain pseudonymous room/viewer identifiers, playback position, drift
+against the room timeline, buffer depth, readiness, autoplay blocking, source
+length mismatch, round-trip delay and clock offset. They exclude account data,
+raw invite codes, membership tokens, source URLs, filenames and call media.
+
+Copy both log files locally with `docker cp`, then run:
+
+    python3 scripts/analyze-watch-together.py /path/to/playback.jsonl
+
+The report estimates peer drift from two playing viewers' samples in the same
+room and media revision, taken within five seconds of each other. Clock estimation
+and changing network delay affect this estimate; it is not a frame-by-frame
+measurement. Compare it with physical-device tests before changing sync thresholds.

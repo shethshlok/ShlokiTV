@@ -1,6 +1,12 @@
 import process from "node:process";
 import { error, json } from "@sveltejs/kit";
 import * as v from "valibot";
+import { DATABASE } from "#lib/services/index.js";
+import { diagnosticsSchema } from "#lib/watch-together/diagnostics.js";
+import {
+	diagnosticRecord,
+	playbackDiagnostics,
+} from "#lib/watch-together/diagnostics.server.js";
 import { watchRooms } from "#lib/watch-together/rooms.server.js";
 import type { RequestHandler } from "./$types";
 
@@ -19,6 +25,7 @@ const mediaSchema = v.object({
 });
 const bodySchema = v.object({
 	action: text(20),
+	sample: v.optional(diagnosticsSchema),
 	code: v.optional(text(24)),
 	member: v.optional(text(24)),
 	token: v.optional(text(24)),
@@ -100,6 +107,18 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
 		(b.action === "signal" && !(b.signal && b.target))
 	) {
 		error(400, "Incomplete room command.");
+	}
+	if (b.action === "diagnostics") {
+		if (!b.sample) {
+			error(400, "Missing playback measurements.");
+		}
+		watchRooms.command(b.code, b.member, b.token, user, b);
+		const { room } = watchRooms.authorize(b.code, b.member, b.token, user);
+		void playbackDiagnostics.write(
+			locals.services.get(DATABASE).directory,
+			diagnosticRecord(watchRooms.snapshot(room), b.member, b.sample),
+		);
+		return json({ ok: true, serverTime: Date.now() }, { headers });
 	}
 	if (b.action === "status") {
 		watchRooms.authorize(b.code, b.member, b.token, user);

@@ -229,6 +229,9 @@ export class WatchRooms {
 			error(429, "Too many room updates.");
 		}
 		member.seen = this.now();
+		if (body.action === "diagnostics") {
+			return;
+		}
 		if (body.action === "heartbeat") {
 			member.connected = member.listeners.size > 0;
 			member.ready = member.connected && body.ready === true;

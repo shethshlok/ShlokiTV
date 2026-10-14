@@ -177,3 +177,18 @@ describe("timeline correction", () => {
 		expect(syncAdjustment(-3, 1)).toEqual({ seek: true, rate: 1 });
 	});
 });
+
+it("diagnostic traffic does not change the playback clock or publish room updates", () => {
+	const s = setup();
+	const before = {
+		sequence: s.state.sequence,
+		position: s.state.position,
+		playing: s.state.playing,
+	};
+	s.command(s.host, "u1", { action: "diagnostics" });
+	expect({
+		sequence: s.state.sequence,
+		position: s.state.position,
+		playing: s.state.playing,
+	}).toEqual(before);
+});
