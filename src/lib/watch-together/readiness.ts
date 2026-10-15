@@ -21,6 +21,35 @@ export function hasPlaybackData(
 	return false;
 }
 
+/** How long a ready player may lack data before the room holds for it. */
+export const STALL_GRACE_MS = 3000;
+
+/**
+ * Readiness with a grace period. A sync seek, a play tap or a short rebuffer
+ * drops `readyState` for a moment; reporting each dip pauses the whole room and
+ * flips the viewer between ready and loading. Only a viewer who was ready gets
+ * the grace, and only until the stall outlasts it.
+ */
+export function steadyReadiness(input: {
+	hasData: boolean;
+	wasReady: boolean;
+	stalledAt: number;
+	now: number;
+	graceMs?: number;
+}): { ready: boolean; stalledAt: number } {
+	if (input.hasData) {
+		return { ready: true, stalledAt: 0 };
+	}
+	if (!input.wasReady) {
+		return { ready: false, stalledAt: 0 };
+	}
+	const stalledAt = input.stalledAt || input.now;
+	return {
+		ready: input.now - stalledAt < (input.graceMs ?? STALL_GRACE_MS),
+		stalledAt,
+	};
+}
+
 /** Someone pressed play, but the room is holding the clock for a viewer to catch up. */
 export function holdingForViewers(room: RoomSnapshot | null): boolean {
 	return !!room?.requestedPlaying && !room.playing;

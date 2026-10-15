@@ -8,6 +8,11 @@ export interface RoomMedia {
 	fileSize?: number | null;
 	duration: number;
 }
+/** The audio a viewer picked. Language is a shared key such as `hi`; the label breaks ties. */
+export interface RoomAudio {
+	language: string | null;
+	label: string;
+}
 export interface RoomMember {
 	id: string;
 	name: string;
@@ -26,6 +31,8 @@ export interface RoomSnapshot {
 	playing: boolean;
 	requestedPlaying: boolean;
 	rate: number;
+	/** Null until someone picks a track. Each viewer applies it to their own file. */
+	audio: RoomAudio | null;
 	serverTime: number;
 	members: RoomMember[];
 }

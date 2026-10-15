@@ -81,6 +81,62 @@ export function audioLanguageTargets(
 	return [...new Set(keys)];
 }
 
+/** A room's shared audio pick: a language key, plus the menu label for ties and files with no code. */
+export interface SharedAudio {
+	language: string | null;
+	label: string;
+}
+
+/**
+ * The choice worth sending to the other viewer, or null when the track names
+ * neither a language nor a label.
+ */
+export function sharedAudioChoice(
+	track: { language?: string | null; label?: string | null } | null | undefined,
+): SharedAudio | null {
+	if (!track) {
+		return null;
+	}
+	const language = languageKey(track.language);
+	const label = track.label?.trim().slice(0, 120) ?? "";
+	if (!(language || label)) {
+		return null;
+	}
+	return { language, label };
+}
+
+/**
+ * Track id for a shared choice. Language wins, and an exact label picks among
+ * several tracks in that language. A file with no language code matches the label.
+ */
+export function matchingAudioTrack(
+	tracks: ReadonlyArray<{ id: number; label: string; language?: string }>,
+	choice: SharedAudio,
+): number {
+	const label = choice.label.trim().toLowerCase();
+	if (choice.language) {
+		const same = tracks.filter(
+			(track) => languageKey(track.language) === choice.language,
+		);
+		const exact = label
+			? same.find((track) => track.label.trim().toLowerCase() === label)
+			: undefined;
+		const pick = exact ?? same[0];
+		if (pick) {
+			return pick.id;
+		}
+	}
+	if (label) {
+		const byLabel = tracks.find(
+			(track) => track.label.trim().toLowerCase() === label,
+		);
+		if (byLabel) {
+			return byLabel.id;
+		}
+	}
+	return -1;
+}
+
 /** Index of the first track in the best-ranked wanted language, or -1. */
 export function preferredTrackIndex(
 	tracks: ReadonlyArray<{ language: string }>,

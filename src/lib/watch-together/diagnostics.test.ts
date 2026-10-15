@@ -42,6 +42,7 @@ const room: RoomSnapshot = {
 	playing: true,
 	requestedPlaying: true,
 	rate: 1,
+	audio: null,
 	serverTime: 1000,
 	members: [
 		{

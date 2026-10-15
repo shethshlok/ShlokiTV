@@ -11,6 +11,7 @@ export const diagnosticsSchema = v.object({
 		"play-blocked",
 		"buffering",
 		"drift-correction",
+		"source-reset",
 	]),
 	position: finite(0, 86_400),
 	driftMs: finite(-86_400_000, 86_400_000),
@@ -24,6 +25,9 @@ export const diagnosticsSchema = v.object({
 	rttMs: finite(0, 60_000),
 	clockOffsetMs: finite(-86_400_000, 86_400_000),
 	stateAgeMs: finite(0, 86_400_000),
+	/** Playing through MediaSource (hls.js or the audio fix), not a plain file. */
+	mse: v.optional(v.boolean()),
+	networkState: v.optional(finite(0, 3)),
 });
 export type PlaybackSample = v.InferOutput<typeof diagnosticsSchema>;
 
@@ -37,7 +41,8 @@ export function playbackSample(
 			| "paused"
 			| "seeking"
 			| "playbackRate"
-		>;
+		> &
+			Partial<Pick<HTMLVideoElement, "currentSrc" | "networkState">>;
 		room: RoomSnapshot;
 		event: PlaybackSample["event"];
 		offset: number;
@@ -74,6 +79,8 @@ export function playbackSample(
 		rttMs: input.rttMs,
 		clockOffsetMs: Math.round(input.offset),
 		stateAgeMs: Math.max(0, now - input.stateReceivedAt),
+		mse: video.currentSrc?.startsWith("blob:") ?? false,
+		networkState: video.networkState ?? 0,
 	};
 }
 

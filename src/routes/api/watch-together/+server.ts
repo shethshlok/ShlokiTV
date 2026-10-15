@@ -34,6 +34,14 @@ const bodySchema = v.object({
 	revision: v.optional(number(1, 1e9)),
 	position: v.optional(number(0, 86_400)),
 	rate: v.optional(number(0.5, 2)),
+	audio: v.optional(
+		v.nullable(
+			v.object({
+				language: v.nullable(text(35)),
+				label: text(120),
+			}),
+		),
+	),
 	ready: v.optional(v.boolean()),
 	playing: v.optional(v.boolean()),
 	enabled: v.optional(v.boolean()),
@@ -113,6 +121,7 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
 	if (
 		(b.action === "seek" && b.position === undefined) ||
 		(b.action === "rate" && b.rate === undefined) ||
+		(b.action === "audio" && !b.audio) ||
 		(b.action === "media" && b.media === undefined) ||
 		(b.action === "signal" && !(b.signal && b.target))
 	) {

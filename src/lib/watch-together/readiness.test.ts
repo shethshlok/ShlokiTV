@@ -4,6 +4,8 @@ import {
 	holdingForViewers,
 	memberStatus,
 	roomPath,
+	STALL_GRACE_MS,
+	steadyReadiness,
 	titleUpdate,
 	waitingNames,
 } from "./readiness.js";
@@ -27,6 +29,46 @@ it("accepts paused current-frame players with future media but holds empty buffe
 			buffered: { length: 0, start: () => 0, end: () => 0 },
 		}),
 	).toBe(false);
+});
+
+it("keeps a ready viewer ready through a short dip, but not a real stall", () => {
+	const start = 10_000;
+	const dip = steadyReadiness({
+		hasData: false,
+		wasReady: true,
+		stalledAt: 0,
+		now: start,
+	});
+	expect(dip).toEqual({ ready: true, stalledAt: start });
+	expect(
+		steadyReadiness({
+			hasData: false,
+			wasReady: true,
+			stalledAt: dip.stalledAt,
+			now: start + STALL_GRACE_MS - 1,
+		}).ready,
+	).toBe(true);
+	expect(
+		steadyReadiness({
+			hasData: false,
+			wasReady: true,
+			stalledAt: dip.stalledAt,
+			now: start + STALL_GRACE_MS,
+		}).ready,
+	).toBe(false);
+	// Data back clears the stall, so the next dip gets a fresh grace period.
+	expect(
+		steadyReadiness({
+			hasData: true,
+			wasReady: true,
+			stalledAt: dip.stalledAt,
+			now: start + 1000,
+		}),
+	).toEqual({ ready: true, stalledAt: 0 });
+	// A viewer who never had data gets no grace.
+	expect(
+		steadyReadiness({ hasData: false, wasReady: false, stalledAt: 0, now: 1 }),
+	).toEqual({ ready: false, stalledAt: 0 });
 });
 
 it("names who a requested play is waiting on", () => {

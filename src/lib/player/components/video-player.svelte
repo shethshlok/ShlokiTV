@@ -2,6 +2,7 @@
 	import { untrack } from "svelte";
 	import { toast } from "svelte-sonner";
 	import { m } from "#lib/i18n/index.js";
+	import { matchingAudioTrack } from "#lib/player/audio-language.js";
 	import {
 		type Chapter,
 		rangeReader,
@@ -178,10 +179,16 @@
 			onFatal: (message) => {
 				fatalError = message;
 			},
-			audioPreference: () => ({
-				languages: audioLanguages,
-				track: initialAudioTrack,
-			}),
+			audioPreference: () => {
+				const shared = together.sharedAudio;
+				return {
+					// A room choice beats this viewer's saved track, which indexes a different file.
+					languages: shared?.language
+						? [shared.language, ...audioLanguages]
+						: audioLanguages,
+					track: shared ? null : initialAudioTrack,
+				};
+			},
 			tryFix: (reason) => fixSource(reason),
 			onProgress: (position, total) => onProgress?.(position, total),
 		});
@@ -274,8 +281,38 @@
 		selectAudioTrack(id: number) {
 			media.selectAudioTrack(id);
 			onPlaybackSettings?.({ audioTrack: id });
+			const track = media.audioTracks.find((item) => item.id === id);
+			if (track) {
+				together.setAudio(track);
+			}
 		},
 	};
+	// The other viewer picks in their own menu. Apply that language here once this file lists its tracks.
+	let announcedAudio = "";
+	$effect(() => {
+		const choice = together.sharedAudio;
+		const tracks = media.audioTracks;
+		const active = media.activeAudioTrack;
+		if (!(choice && tracks.length)) {
+			return;
+		}
+		const id = matchingAudioTrack(tracks, choice);
+		if (id === -1) {
+			const key = `${together.room?.revision ?? 0}:${choice.language ?? ""}:${choice.label}`;
+			if (announcedAudio !== key) {
+				announcedAudio = key;
+				toast("This file has no matching audio", {
+					description: choice.label
+						? `The room is on “${choice.label}”.`
+						: "The other viewer picked a track this file does not have.",
+				});
+			}
+			return;
+		}
+		if (id !== active) {
+			media.selectAudioTrack(id);
+		}
+	});
 
 	const bufferedEnd = $derived(transport.buffered.at(-1)?.end ?? 0);
 	const progressRatio = $derived(

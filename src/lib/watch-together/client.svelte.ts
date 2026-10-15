@@ -1,9 +1,11 @@
 // biome-ignore-all lint/suspicious/noUnnecessaryConditions: Browser callbacks mutate these private flags and counters asynchronously; static narrowing cannot track those writes.
+// biome-ignore-all lint/style/noExcessiveLinesPerFile: Playback, the call, and shared audio share one command queue.
 
+import { sharedAudioChoice } from "#lib/player/audio-language.js";
 import { openCamera, setTracks, WatchCall } from "./call.js";
 import { PlaybackReporter, type PlaybackSample } from "./diagnostics.js";
 import { loadMembership, saveMembership } from "./membership-store.js";
-import { hasPlaybackData, titleUpdate } from "./readiness.js";
+import { hasPlaybackData, steadyReadiness, titleUpdate } from "./readiness.js";
 import {
 	type CallSignal,
 	type Membership,
@@ -49,6 +51,9 @@ class WatchTogether {
 	private pending = 0;
 	private queue = Promise.resolve();
 	private reportedReady: boolean | undefined;
+	private stalledAt = 0;
+	/** The track this viewer just picked, until the room confirms it. */
+	chosenAudio = $state<RoomSnapshot["audio"]>(null);
 	private mediaSentAt = 0; // A title change's new state may still be in flight.
 	private call: WatchCall | null = null;
 	private peerId = "";
@@ -65,6 +70,10 @@ class WatchTogether {
 	}
 	get peer() {
 		return this.room?.members.find((m) => m.id !== this.membership?.member);
+	}
+	/** Room audio, with this viewer's pick winning until the server agrees. */
+	get sharedAudio() {
+		return this.chosenAudio ?? this.room?.audio ?? null;
 	}
 	async request(body: Record<string, unknown>) {
 		const sent = Date.now();
@@ -103,6 +112,9 @@ class WatchTogether {
 		this.queue = work.then(ignore, ignore);
 		return work
 			.then(ignore, (error) => {
+				if (body.action === "audio" && this.chosenAudio === body.audio) {
+					this.chosenAudio = null;
+				}
 				if (membership !== this.membership) {
 					return;
 				}
@@ -210,6 +222,13 @@ class WatchTogether {
 				this.stale?.pause();
 			}
 			this.room = room;
+			if (
+				this.chosenAudio &&
+				room.audio?.language === this.chosenAudio.language &&
+				room.audio.label === this.chosenAudio.label
+			) {
+				this.chosenAudio = null;
+			}
 			this.diagnostics.stateReceivedAt = Date.now();
 			this.connected = true;
 			this.retries = 0;
@@ -303,6 +322,7 @@ class WatchTogether {
 		this.unlocking = false;
 		this.membership = null;
 		this.room = null;
+		this.chosenAudio = null;
 		this.stopCall();
 		saveMembership(this.membership);
 		if (this.video) {
@@ -381,6 +401,9 @@ class WatchTogether {
 				if (event === "waiting") {
 					this.diagnostic("buffering");
 				}
+				if (event === "emptied") {
+					this.diagnostic("source-reset");
+				}
 				this.tick();
 			};
 		}
@@ -436,10 +459,17 @@ class WatchTogether {
 			Number.isFinite(video.duration) &&
 			room.media.duration > 0 &&
 			Math.abs(video.duration - room.media.duration) > 2;
+		const steady = steadyReadiness({
+			hasData: !!video && hasPlaybackData(video),
+			wasReady: this.reportedReady === true,
+			stalledAt: this.stalledAt,
+			now: Date.now(),
+		});
+		this.stalledAt = steady.stalledAt;
 		const ready =
 			!!video &&
 			same &&
-			hasPlaybackData(video) &&
+			steady.ready &&
 			!this.blocked &&
 			!video.error &&
 			(!this.mismatch || this.acceptedMismatch);
@@ -538,6 +568,22 @@ class WatchTogether {
 		if (this.room) {
 			void this.command({ action: "rate", rate });
 		}
+	}
+	/** Tell the room which audio track this viewer picked. The other player matches it on their own file. */
+	setAudio(track: { language?: string | null; label?: string | null }) {
+		if (!this.room) {
+			return;
+		}
+		const audio = sharedAudioChoice(track);
+		if (!audio) {
+			return;
+		}
+		const current = this.sharedAudio;
+		if (current?.language === audio.language && current.label === audio.label) {
+			return;
+		}
+		this.chosenAudio = audio;
+		void this.command({ action: "audio", audio });
 	}
 	async play() {
 		const video = this.video;

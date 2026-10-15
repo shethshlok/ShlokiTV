@@ -3,7 +3,9 @@ import {
 	audioChoiceLabel,
 	audioLanguageTargets,
 	languageKey,
+	matchingAudioTrack,
 	preferredTrackIndex,
+	sharedAudioChoice,
 } from "./audio-language.ts";
 
 describe("languageKey", () => {
@@ -40,6 +42,42 @@ describe("audioLanguageTargets", () => {
 		expect(audioLanguageTargets("original", "en", ["fr"])).toEqual(["en"]);
 		expect(audioLanguageTargets("", undefined, ["fr"])).toEqual([]);
 		expect(audioLanguageTargets("fr", "device", ["en"])).toEqual(["fr"]);
+	});
+});
+
+describe("shared audio", () => {
+	const tracks = [
+		{ id: 3, label: "Stereo", language: "eng" },
+		{ id: 7, label: "5.1", language: "hin" },
+		{ id: 8, label: "Commentary", language: "hin" },
+	];
+
+	it("normalizes a pick and drops a track with no name", () => {
+		expect(sharedAudioChoice({ language: "hin", label: "  Hindi  " })).toEqual({
+			language: "hi",
+			label: "Hindi",
+		});
+		expect(sharedAudioChoice({ language: "und", label: "Track 1" })).toEqual({
+			language: null,
+			label: "Track 1",
+		});
+		expect(sharedAudioChoice({ language: "", label: "  " })).toBeNull();
+		expect(sharedAudioChoice(null)).toBeNull();
+	});
+
+	it("matches another file by language, then by label", () => {
+		expect(
+			matchingAudioTrack(tracks, { language: "hi", label: "Commentary" }),
+		).toBe(8);
+		expect(
+			matchingAudioTrack(tracks, { language: "hi", label: "missing" }),
+		).toBe(7);
+		expect(
+			matchingAudioTrack(tracks, { language: null, label: "Stereo" }),
+		).toBe(3);
+		expect(matchingAudioTrack(tracks, { language: "ta", label: "Tamil" })).toBe(
+			-1,
+		);
 	});
 });
 

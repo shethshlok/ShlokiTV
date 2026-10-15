@@ -3,7 +3,9 @@ import { readFileSync } from "node:fs";
 import { mkdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { error } from "@sveltejs/kit";
+import { sharedAudioChoice } from "#lib/player/audio-language.js";
 import {
+	type RoomAudio,
 	type RoomMedia,
 	type RoomMember,
 	type RoomPreview,
@@ -29,6 +31,7 @@ interface Room {
 	requestedPlaying: boolean;
 	playing: boolean;
 	rate: number;
+	audio: RoomAudio | null;
 	updated: number;
 	created: number;
 	touched: number;
@@ -74,6 +77,7 @@ export class WatchRooms {
 			}));
 			this.rooms.set(room.code, {
 				...room,
+				audio: sharedAudioChoice(room.audio),
 				playing: false,
 				updated: now,
 				members: new Map(members.map((m) => [m.id, m])),
@@ -123,6 +127,7 @@ export class WatchRooms {
 			playing: room.playing,
 			requestedPlaying: room.requestedPlaying,
 			rate: room.rate,
+			audio: room.audio,
 			serverTime: room.updated,
 			members: [...room.members.values()].map(
 				({ id, name, ready, connected, call }) => ({
@@ -259,6 +264,7 @@ export class WatchRooms {
 			// A host who is already playing has data; keep the clock running until they connect.
 			playing: !!media && start.playing === true,
 			rate: 1,
+			audio: null,
 			updated: now,
 			created: now,
 			touched: now,
@@ -425,6 +431,16 @@ export class WatchRooms {
 			case "rate":
 				room.rate = body.rate as number;
 				break;
+			case "audio": {
+				const choice = sharedAudioChoice(
+					body.audio as { language?: string | null; label?: string | null },
+				);
+				if (!choice) {
+					error(400, "Missing audio choice.");
+				}
+				room.audio = choice;
+				break;
+			}
 			case "media":
 				this.setMedia(room, id, body);
 				break;

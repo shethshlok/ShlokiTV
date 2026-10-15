@@ -125,6 +125,31 @@ describe("watch rooms", () => {
 			s.command(s.guest, "u2", { action: "seek", position: 20, revision: 1 }),
 		).toThrow();
 	});
+	it("shares an audio choice without moving the clock or unreadies anyone", () => {
+		const s = setup();
+		s.command(s.host, "u1", { action: "seek", position: 12 });
+		s.command(s.host, "u1", { action: "ready", ready: true });
+		s.command(s.guest, "u2", {
+			action: "audio",
+			audio: { language: "hin", label: "  Hindi 5.1  " },
+		});
+		expect(s.state.audio).toEqual({ language: "hi", label: "Hindi 5.1" });
+		expect(s.state.position).toBe(12);
+		expect(s.state.revision).toBe(1);
+		expect(
+			s.state.members.find((member) => member.id === s.host.member)?.ready,
+		).toBe(true);
+		expect(s.rooms.serialize()[0]?.audio).toEqual({
+			language: "hi",
+			label: "Hindi 5.1",
+		});
+		expect(() =>
+			s.command(s.host, "u1", {
+				action: "audio",
+				audio: { language: null, label: "  " },
+			}),
+		).toThrow();
+	});
 	it("preserves the position when replacing a failed source for the same title", () => {
 		const s = setup();
 		s.command(s.host, "u1", { action: "seek", position: 42 });

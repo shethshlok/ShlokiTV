@@ -308,6 +308,7 @@
        <p class="mt-1 font-medium">{room.media.title || "Untitled"}</p>
        <p class="mt-1 wrap-break-word text-xs text-white/60">Host's source: {room.media.label || "Unknown release"}</p>
        {#if room.rate !== 1}<p class="mt-2 text-amber-200">Room speed: {room.rate}× for everyone. Change it from the speed menu.</p>{/if}
+       {#if room.audio}<p class="mt-2 text-white/70">Audio: {room.audio.label || room.audio.language} for everyone.</p>{/if}
        {#if !onTitle && titlePath}
         <button class="room-button primary mt-3 w-full" onclick={()=>void goto(titlePath)}><PlayIcon class="size-4" />Go to {room.media.title || "the title"}</button>
        {/if}
