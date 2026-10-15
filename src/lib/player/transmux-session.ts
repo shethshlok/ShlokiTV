@@ -64,6 +64,8 @@ interface Opened {
 	encoded: EncodedCodec | null;
 	active: number;
 	duration: number;
+	/** The browser would play this track on its own. Don't replace it just to list the others. */
+	playsWithoutRemux: boolean;
 }
 
 interface Attachment {
@@ -234,14 +236,23 @@ async function open(
 	}
 	const primary = await input.getPrimaryAudioTrack();
 	const { active, native } = startingTrack(audio, primary?.id, preference);
-	// Direct files need MSE for track selection when the native API is absent.
+	// Chrome has no audioTracks, so a second language needs the remux. The
+	// default track still plays in the element, and taking over at probe time
+	// throws that playback away before the remux has a frame.
 	const needsTrackSelection =
 		audio.length > 1 && !("audioTracks" in document.createElement("video"));
 	if (reason === "probe" && native && !needsTrackSelection) {
 		return null;
 	}
 	const duration = await input.computeDuration();
-	return { video, audio, encoded, active, duration };
+	return {
+		video,
+		audio,
+		encoded,
+		active,
+		duration,
+		playsWithoutRemux: reason === "probe" && native,
+	};
 }
 
 /**
@@ -252,6 +263,8 @@ async function open(
  */
 export class TransmuxSession {
 	readonly audioTracks: AudioTrackOption[];
+	/** True when `<video>` is already playing the track this session would start on. */
+	readonly playsWithoutRemux: boolean;
 	readonly #input: Input;
 	readonly #opened: Opened;
 	readonly #keyPackets: EncodedPacketSink;
@@ -267,6 +280,7 @@ export class TransmuxSession {
 		this.#input = input;
 		this.#opened = opened;
 		this.#active = opened.active;
+		this.playsWithoutRemux = opened.playsWithoutRemux;
 		this.#keyPackets = new EncodedPacketSink(opened.video);
 		this.audioTracks = opened.audio.map((plan, index) => ({
 			id: index,
@@ -332,11 +346,14 @@ export class TransmuxSession {
 	}
 
 	selectAudioTrack(id: number) {
-		if (!this.#attached || id === this.#active || !this.#opened.audio[id]) {
+		if (id === this.#active || !this.#opened.audio[id]) {
 			return;
 		}
 		this.#active = id;
-		void this.#restart(this.#attached.el.currentTime);
+		// A standby session has no element yet; attach starts on `#active`.
+		if (this.#attached) {
+			void this.#restart(this.#attached.el.currentTime);
+		}
 	}
 
 	dispose() {

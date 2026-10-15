@@ -1,3 +1,4 @@
+import { untrack } from "svelte";
 import {
 	type AudioByteSample,
 	evaluateAudioTick,
@@ -48,7 +49,8 @@ export function createSilentAudioWatch(deps: SilentAudioDeps) {
 		if (!video) {
 			return;
 		}
-		void deps.tryFix("probe");
+		// The probe reads the fix it publishes: tracked, it would re-arm this watch.
+		untrack(() => void deps.tryFix("probe"));
 		const el = video as HTMLVideoElement & {
 			webkitAudioDecodedByteCount?: number;
 			webkitVideoDecodedByteCount?: number;

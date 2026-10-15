@@ -139,6 +139,13 @@ it("updates the room's title only when the player differs, keeping a lobby picke
 		),
 	).toEqual({ media: { ...media, label: "b", duration: 100 } });
 	expect(
+		titleUpdate(
+			{ media: { ...media, duration: 100 } },
+			{ ...media, id: "tt2" },
+			video,
+		),
+	).toEqual({ media: { ...media, id: "tt2", duration: 100 }, position: 42 });
+	expect(
 		titleUpdate({ media: null }, media, {
 			duration: Number.NaN,
 			currentTime: 0,

@@ -197,9 +197,11 @@ test("two independent viewers synchronize, reconnect, call, and clean up", async
 
 test("rooms reject unauthenticated and cross-origin requests", async ({
 	request,
+	baseURL,
 }) => {
+	const origin = baseURL ?? "http://localhost:3000";
 	const unsigned = await request.post("/api/watch-together", {
-		headers: { origin: "http://localhost:3000" },
+		headers: { origin },
 		data: { action: "join", code: "does-not-exist" },
 	});
 	expect(unsigned.status()).toBe(401);
@@ -217,7 +219,7 @@ test("rooms reject unauthenticated and cross-origin requests", async ({
 	});
 	expect(crossed.status()).toBe(403);
 	const invalid = await request.post("/api/watch-together", {
-		headers: { origin: "http://localhost:3000" },
+		headers: { origin },
 		data: {
 			action: "create",
 			media: {
@@ -294,6 +296,19 @@ test("buffering, network interruptions, source replacement, and episode changes 
 		await expect
 			.poll(() => movie(guest).evaluate((v) => (v as HTMLVideoElement).paused))
 			.toBe(false);
+		// The guest can move the room on too: the host's old player stops, then follows.
+		await guest.goto("/dev/player?id=episode-three");
+		await ready(guest);
+		await expect
+			.poll(() => movie(host).evaluate((v) => (v as HTMLVideoElement).paused))
+			.toBe(true);
+		await host.goto("/dev/player?id=episode-three");
+		await ready(host);
+		await host.getByRole("button", { name: /Watch room/ }).click();
+		await expect(
+			host.getByText("Ready to watch", { exact: true }),
+		).toBeVisible();
+		await expect(host.getByText(/Guest host · ready/)).toBeVisible();
 	} finally {
 		await a.close();
 		await b.close();

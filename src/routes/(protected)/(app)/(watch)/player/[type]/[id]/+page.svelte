@@ -1,4 +1,5 @@
 <script lang="ts">
+	// biome-ignore-all lint/style/noExcessiveLinesPerFile: source choice, recovery and the watch room share this page
 	import ArrowLeftIcon from "@lucide/svelte/icons/arrow-left";
 	import CopyIcon from "@lucide/svelte/icons/copy";
 	import ExternalLinkIcon from "@lucide/svelte/icons/external-link";
@@ -46,6 +47,7 @@
 	import {
 		audioSupport,
 		describeStream,
+		earlyStream,
 		pickPreferredStream,
 		riskyVideoCodec,
 	} from "#lib/watch/stream-format.js";
@@ -150,6 +152,7 @@
 	let recoveryVideo = "";
 	const failedSources = new Set<string>();
 
+	// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: each retry depends on the previous result
 	async function recoverSource(failedUrl: string) {
 		if (offlineSrc || recoveringSource || active?.url !== failedUrl) {
 			return;
@@ -173,6 +176,7 @@
 		try {
 			const query = resolveStreams({ type: videoType, id: videoId });
 			for (let attempt = 0; attempt < 3; attempt++) {
+				// biome-ignore lint/performance/noAwaitInLoops: the next attempt depends on this result
 				await query.refresh();
 				const result = await query;
 				if (id !== videoId || active?.url !== failedUrl) {
@@ -305,19 +309,40 @@
 		() => streamsQuery,
 		() => `${type}:${id}`,
 	);
-	const autoStream = $derived(
-		(!together.host && together.room?.media?.id === id
-			? matchingSource(
-					together.room.media,
-					streamsQuery?.current?.streams ?? [],
-				)
-			: null) ??
-			pickPreferredStream(
-				streamsQuery?.current?.streams ?? [],
-				theme.current.preferredQuality,
-				sourceSearch.searching,
-			),
-	);
+	// Seconds of discovery so far, so a good source needn't wait for the slowest provider.
+	let searchedMs = $state(0);
+	$effect(() => {
+		void `${type}:${id}`;
+		if (!sourceSearch.searching) {
+			return;
+		}
+		const started = Date.now();
+		untrack(() => {
+			searchedMs = 0;
+		});
+		const timer = setInterval(() => {
+			searchedMs = Date.now() - started;
+		}, 1000);
+		return () => clearInterval(timer);
+	});
+	const following = $derived(!together.host && together.room?.media?.id === id);
+	const autoStream = $derived.by(() => {
+		const streams = streamsQuery?.current?.streams ?? [];
+		const preferred = theme.current.preferredQuality;
+		return (
+			(following && together.room?.media
+				? matchingSource(together.room.media, streams)
+				: null) ??
+			pickPreferredStream(streams, preferred, sourceSearch.searching) ??
+			(sourceSearch.searching
+				? // A follower holds out longer for the picker's exact file.
+					earlyStream(streams, preferred, {
+						waitedMs: searchedMs,
+						...(following ? { patienceMs: 20_000, immediate: false } : {}),
+					})
+				: null)
+		);
+	});
 	// Lock the automatic choice after discovery. Manual picks take precedence,
 	// while the query continues polling for sources in the background.
 	$effect(() => {

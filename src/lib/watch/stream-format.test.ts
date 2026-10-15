@@ -3,6 +3,7 @@ import {
 	audioSupport,
 	// biome-ignore lint/suspicious/noDeprecatedImports: this suite covers the back-compat alias
 	describeStream,
+	earlyStream,
 	formatFileSize,
 	isPlayable,
 	pickPreferredStream,
@@ -182,7 +183,9 @@ describe("pickPreferredStream", () => {
 
 	it("waits for later provider batches before making an automatic choice", () => {
 		expect(pickPreferredStream([streams[0]!], "auto", true)).toBeNull();
-		expect(pickPreferredStream([streams[0]!, streams[2]!], "auto", true)).toBeNull();
+		expect(
+			pickPreferredStream([streams[0]!, streams[2]!], "auto", true),
+		).toBeNull();
 		expect(pickPreferredStream(streams, "auto", false)?.index).toBe(1);
 	});
 
@@ -239,6 +242,34 @@ describe("pickPreferredStream", () => {
 			stream({ index: 1, title: "Movie 1080p AC3" }),
 		];
 		expect(pickPreferredStream(opts, "auto")?.index).toBe(1);
+	});
+});
+
+describe("earlyStream", () => {
+	const hd = stream({ index: 0, title: "Movie 1080p WEB AAC" });
+	const sd = stream({ index: 1, title: "Movie 720p WEB AAC" });
+	const silent = stream({ index: 2, title: "Movie 1080p DTS-HD MA" });
+
+	it("starts at once on a source that meets the preference", () => {
+		expect(earlyStream([sd, hd], "auto", { waitedMs: 0 })?.index).toBe(0);
+		expect(earlyStream([sd], "720p", { waitedMs: 0 })?.index).toBe(1);
+	});
+
+	it("waits a little for anything less, then takes the best so far", () => {
+		expect(earlyStream([sd], "auto", { waitedMs: 1000 })).toBeNull();
+		expect(earlyStream([sd], "auto", { waitedMs: 6000 })?.index).toBe(1);
+	});
+
+	it("never starts early on audio the browser may not decode", () => {
+		expect(earlyStream([silent], "auto", { waitedMs: 60_000 })).toBeNull();
+	});
+
+	it("lets a follower hold out for the picker's file", () => {
+		const follower = { patienceMs: 20_000, immediate: false };
+		expect(earlyStream([hd], "auto", { waitedMs: 0, ...follower })).toBeNull();
+		expect(
+			earlyStream([hd], "auto", { waitedMs: 20_000, ...follower })?.index,
+		).toBe(0);
 	});
 });
 

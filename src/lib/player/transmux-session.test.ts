@@ -77,6 +77,8 @@ describe("direct-file audio selection", () => {
 			"hin",
 		]);
 		expect(session?.converting).toBe(false);
+		// The default track already plays. Listing the other one must not take over.
+		expect(session?.playsWithoutRemux).toBe(true);
 		session?.dispose();
 		expect(source.dispose).toHaveBeenCalledOnce();
 	});
@@ -111,6 +113,7 @@ describe("direct-file audio selection", () => {
 			{ languages: ["hi"], track: null },
 		);
 		expect(session?.activeAudioTrack).toBe(1);
+		expect(session?.playsWithoutRemux).toBe(false);
 		session?.dispose();
 	});
 });

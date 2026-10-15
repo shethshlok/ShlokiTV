@@ -1,4 +1,5 @@
 import type Hls from "hls.js";
+import { untrack } from "svelte";
 import { m } from "#lib/i18n/index.js";
 import { preferredTrackIndex } from "#lib/player/audio-language.js";
 import {
@@ -143,7 +144,15 @@ function createSourceFix(
 	deps: Pick<MediaDeps, "src" | "video" | "audioPreference">,
 ) {
 	let fix = $state.raw<AudioFix | null>(null);
+	// A multi-audio file the browser already plays. Held so a later track pick
+	// can take over, without replacing the picture that is on screen.
+	let standby = $state.raw<AudioFix | null>(null);
 	let probing: { src: string; result: Promise<boolean> } | null = null;
+
+	function dropStandby() {
+		standby?.session.dispose();
+		standby = null;
+	}
 
 	async function probe(
 		src: string,
@@ -162,6 +171,12 @@ function createSourceFix(
 			session.dispose();
 			return false;
 		}
+		if (reason === "probe" && session.playsWithoutRemux) {
+			dropStandby();
+			standby = { src, session, resumeAt: 0 };
+			return false;
+		}
+		dropStandby();
 		fix = { src, session, resumeAt: el.currentTime };
 		return true;
 	}
@@ -174,12 +189,43 @@ function createSourceFix(
 		get active() {
 			return active();
 		},
+		/** Tracks for a file that is still playing natively. */
+		get standby() {
+			return standby?.src === deps.src() && !standby.session.disposed
+				? standby
+				: null;
+		},
+		/** Swap the held session in at `track`. False when there is nothing held. */
+		engage(track: number): boolean {
+			const held = this.standby;
+			const el = deps.video();
+			if (!(held && el)) {
+				return false;
+			}
+			held.session.selectAudioTrack(track);
+			held.resumeAt = el.currentTime;
+			standby = null;
+			fix = held;
+			return true;
+		},
 		/** False when this source can't be fixed, or already runs fixed. */
 		request(reason: TransmuxReason): Promise<boolean> {
 			const el = deps.video();
 			const src = deps.src();
+			if (standby && standby.src !== src) {
+				dropStandby();
+			}
 			if (!(el && src) || src.toLowerCase().includes(".m3u8") || active()) {
 				return Promise.resolve(false);
+			}
+			// Native playback is on screen. A probe must not start a second one.
+			// Confirmed silence re-opens the file, because the held session
+			// still trusts the codec that produced no sound.
+			if (standby?.src === src && reason !== "silent") {
+				return Promise.resolve(false);
+			}
+			if (reason === "silent") {
+				dropStandby();
 			}
 			if (probing?.src === src) {
 				return probing.result;
@@ -199,29 +245,37 @@ function createSourceFix(
  * menu. HLS multi-language streams come from hls.js's own track list; a direct
  * file (mp4/mkv/…) that muxes more than one audio track comes from the
  * browser's native `HTMLMediaElement.audioTracks` instead (see
- * `attachNativeAudioTracks` in `media.ts`). Browsers without that API use the
- * transmux pipeline for supported multi-track direct files. A single-track
- * or unsupported source does not expose a choice in the settings menu.
+ * `attachNativeAudioTracks` in `media.ts`). Browsers without that API keep
+ * playing a file whose default audio already works, and use the transmux
+ * pipeline only to switch language or to replace audio that stayed silent. A
+ * single-track or unsupported source does not expose a choice in the settings
+ * menu.
  * `fix()` swaps a direct file the browser can't play as is (undecodable audio,
  * refused container) over to the transmux pipeline at the current position,
  * when the host allows it.
  * Tears the HLS instance / native listeners down and clears the element `src`
  * when the source changes or the component unmounts.
  */
-export function createPlayerMedia(deps: MediaDeps) {
-	let hls = $state<Hls | null>(null);
+/** Track list, the saved preference, and a held remux that is not on screen yet. */
+function createAudioMenu(
+	deps: MediaDeps,
+	sourceFix: ReturnType<typeof createSourceFix>,
+	hls: () => Hls | null,
+) {
 	let audioTracks = $state<AudioTrackList>([]);
 	let activeAudioTrack = $state(-1);
-	const sourceFix = createSourceFix(deps);
 	let preferenceApplied = false;
 
 	function selectAudioTrack(id: number) {
 		const fix = sourceFix.active;
+		const instance = hls();
 		if (fix) {
 			fix.session.selectAudioTrack(id);
-		} else if (hls) {
-			hls.audioTrack = id;
-		} else if (!enableNativeTrack(deps.video(), id)) {
+		} else if (instance) {
+			instance.audioTrack = id;
+		} else if (enableNativeTrack(deps.video(), id)) {
+			// The browser switched the track in place.
+		} else if (!sourceFix.engage(id)) {
 			return;
 		}
 		activeAudioTrack = id;
@@ -243,41 +297,32 @@ export function createPlayerMedia(deps: MediaDeps) {
 		}
 	}
 
-	const hooks: AttachHooks = {
-		onFatal: (message) => deps.onFatal(message),
-		onAudio: (tracks, active) => {
+	// List the other languages without taking the element off the file.
+	$effect(() => {
+		const held = sourceFix.standby;
+		if (!held) {
+			return;
+		}
+		untrack(() => {
+			const tracks = held.session.audioTracks;
+			const active = held.session.activeAudioTrack;
 			audioTracks = tracks;
 			activeAudioTrack = active;
 			applyPreference(tracks, active);
-		},
-		onHls: (instance) => {
-			hls = instance;
-		},
-	};
-
-	$effect(() => {
-		const el = deps.video();
-		const src = deps.src();
-		if (!(el && src)) {
-			return;
-		}
-		// Same source, new pipeline : playback state carries over.
-		const fix = sourceFix.active;
-		if (fix) {
-			return attachTransmux(el, fix, hooks);
-		}
-		deps.onLoad();
-		audioTracks = [];
-		activeAudioTrack = -1;
-		preferenceApplied = false;
-		return src.toLowerCase().includes(".m3u8")
-			? attachHls(el, src, hooks)
-			: attachNative(el, src, hooks);
+		});
 	});
 
 	return {
-		get hls() {
-			return hls;
+		selectAudioTrack,
+		reset() {
+			audioTracks = [];
+			activeAudioTrack = -1;
+			preferenceApplied = false;
+		},
+		show(tracks: AudioTrackList, active: number) {
+			audioTracks = tracks;
+			activeAudioTrack = active;
+			applyPreference(tracks, active);
 		},
 		get audioTracks() {
 			return audioTracks;
@@ -288,8 +333,60 @@ export function createPlayerMedia(deps: MediaDeps) {
 		set activeAudioTrack(value: number) {
 			activeAudioTrack = value;
 		},
+	};
+}
+
+export function createPlayerMedia(deps: MediaDeps) {
+	let hls = $state<Hls | null>(null);
+	const sourceFix = createSourceFix(deps);
+	const audio = createAudioMenu(deps, sourceFix, () => hls);
+
+	const hooks: AttachHooks = {
+		onFatal: (message) => deps.onFatal(message),
+		onAudio: (tracks, active) => audio.show(tracks, active),
+		onHls: (instance) => {
+			hls = instance;
+		},
+	};
+
+	// Only the element, the URL and the fix may re-attach. Attaching calls back
+	// into the component (audio preference, room state, playback flags): a
+	// tracked read there would reload the source on every unrelated update.
+	$effect(() => {
+		const el = deps.video();
+		const src = deps.src();
+		if (!(el && src)) {
+			return;
+		}
+		// Same source, new pipeline : playback state carries over.
+		const fix = sourceFix.active;
+		return untrack(() => {
+			if (fix) {
+				return attachTransmux(el, fix, hooks);
+			}
+			deps.onLoad();
+			audio.reset();
+			return src.toLowerCase().includes(".m3u8")
+				? attachHls(el, src, hooks)
+				: attachNative(el, src, hooks);
+		});
+	});
+
+	return {
+		get hls() {
+			return hls;
+		},
+		get audioTracks() {
+			return audio.audioTracks;
+		},
+		get activeAudioTrack() {
+			return audio.activeAudioTrack;
+		},
+		set activeAudioTrack(value: number) {
+			audio.activeAudioTrack = value;
+		},
 		/** From the audio menu : switch and close is the caller's job. */
-		selectAudioTrack,
+		selectAudioTrack: audio.selectAudioTrack,
 		/** The fix is running and its audio is converted, not copied. */
 		get convertingAudio() {
 			return Boolean(sourceFix.active?.session.converting);

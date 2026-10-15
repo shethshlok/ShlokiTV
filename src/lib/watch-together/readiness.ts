@@ -93,6 +93,13 @@ export function roomPath(room: Pick<RoomSnapshot, "media"> | null) {
  * The `media` command a player should send so the room matches what it plays, or
  * null. A lobby pick carries the player's place, such as a resumed episode.
  */
+export function sameTitle(
+	a: Pick<RoomMedia, "id" | "type">,
+	b: Pick<RoomMedia, "id" | "type">,
+) {
+	return a.id === b.id && a.type === b.type;
+}
+
 export function titleUpdate(
 	room: Pick<RoomSnapshot, "media">,
 	media: RoomMedia | null,
@@ -105,10 +112,10 @@ export function titleUpdate(
 		return null;
 	}
 	const current = room.media;
+	const keepsTitle = !!current && sameTitle(current, media);
 	const same =
 		!!current &&
-		current.id === media.id &&
-		current.type === media.type &&
+		keepsTitle &&
 		current.label === media.label &&
 		current.title === media.title &&
 		Math.abs(current.duration - video.duration) <= 0.5;
@@ -117,6 +124,6 @@ export function titleUpdate(
 	}
 	return {
 		media: { ...media, duration: video.duration },
-		...(current ? {} : { position: video.currentTime }),
+		...(keepsTitle ? {} : { position: video.currentTime }),
 	};
 }

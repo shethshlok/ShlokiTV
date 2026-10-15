@@ -106,24 +106,47 @@ describe("watch rooms", () => {
 		).toThrow();
 		expect(() => s.rooms.join(s.host.code, "u3", "Third")).toThrow();
 	});
-	it("accepts guest controls, rejects stale revisions, and restricts title changes to the host", () => {
+	it("accepts guest controls, lets either viewer pick the title, and rejects stale revisions", () => {
 		const s = setup();
 		s.command(s.guest, "u2", { action: "seek", position: 42 });
 		expect(s.state.position).toBe(42);
+		// Only the picker refines its own title (source, running time).
 		expect(() =>
 			s.command(s.guest, "u2", {
 				action: "media",
-				media: { ...media, id: "tt2" },
+				media: { ...media, label: "guest release" },
 			}),
 		).toThrow();
-		s.command(s.host, "u1", {
+		s.command(s.guest, "u2", {
 			action: "media",
 			media: { ...media, id: "tt2" },
+			position: 7,
 		});
+		expect(s.state.media?.id).toBe("tt2");
+		expect(s.state.host).toBe(s.guest.member);
+		expect(s.state.position).toBe(7);
+		expect(s.state.revision).toBe(2);
+		s.command(s.host, "u1", {
+			action: "media",
+			media: { ...media, id: "tt3" },
+		});
+		expect(s.state.host).toBe(s.host.member);
 		expect(s.state.position).toBe(0);
 		expect(() =>
-			s.command(s.guest, "u2", { action: "seek", position: 20, revision: 1 }),
+			s.command(s.guest, "u2", { action: "seek", position: 20, revision: 2 }),
 		).toThrow();
+	});
+	it("only broadcasts a heartbeat that changes readiness", () => {
+		const s = setup();
+		s.command(s.host, "u1", { action: "ready", ready: true });
+		const sequence = s.state.sequence;
+		s.command(s.host, "u1", { action: "heartbeat", ready: true });
+		expect(s.state.sequence).toBe(sequence);
+		s.command(s.host, "u1", { action: "heartbeat", ready: false });
+		expect(s.state.sequence).toBe(sequence + 1);
+		expect(
+			s.state.members.find((member) => member.id === s.host.member)?.ready,
+		).toBe(false);
 	});
 	it("shares an audio choice without moving the clock or unreadies anyone", () => {
 		const s = setup();
@@ -339,21 +362,21 @@ describe("lobby rooms", () => {
 		expect(room.state.host).toBe(room.guest.member);
 		expect(room.state.position).toBe(42);
 		expect(room.state.requestedPlaying).toBe(true);
-		// Once a title is set, only its host can change it.
-		expect(() =>
-			room.rooms.command(
-				room.host.code,
-				room.host.member,
-				room.host.token,
-				"u1",
-				{
-					action: "media",
-					revision: room.state.revision,
-					media: { ...media, id: "tt2" },
-				},
-			),
-		).toThrow();
 		expect(room.rooms.preview(room.host.code).title).toBe("Movie");
+		// The other viewer may pick something else; they become host.
+		room.rooms.command(
+			room.host.code,
+			room.host.member,
+			room.host.token,
+			"u1",
+			{
+				action: "media",
+				revision: room.state.revision,
+				media: { ...media, id: "tt2", title: "Other" },
+			},
+		);
+		expect(room.state.host).toBe(room.host.member);
+		expect(room.rooms.preview(room.host.code).title).toBe("Other");
 	});
 
 	it("goes back to the lobby when the host clears the title", () => {

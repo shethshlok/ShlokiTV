@@ -325,18 +325,33 @@ export class WatchRooms {
 		};
 	}
 	/** In a lobby, whoever picks the first title hosts it. */
+	/** Heartbeats arrive every 10 s per viewer; broadcast only what changed. */
+	private heartbeat(room: Room, member: Member, ready: boolean) {
+		const connected = member.listeners.size > 0;
+		if (
+			connected === member.connected &&
+			(connected && ready) === member.ready
+		) {
+			room.touched = this.now();
+			return;
+		}
+		member.connected = connected;
+		member.ready = connected && ready;
+		this.update(room);
+	}
 	private setMedia(room: Room, id: string, body: Record<string, unknown>) {
-		if (room.media && room.host !== id) {
-			error(403, "Only the host can change the title or episode.");
+		const next = (body.media ?? null) as RoomMedia | null;
+		const newTitle =
+			!next || next.id !== room.media?.id || next.type !== room.media.type;
+		// Anyone may pick a title; only its picker refines it (source, duration).
+		if (room.media && room.host !== id && !newTitle) {
+			error(403, "Only the viewer who picked this title can update it.");
 		}
 		room.host = id;
-		const next = (body.media ?? null) as RoomMedia | null;
-		if (!next || next.id !== room.media?.id || next.type !== room.media.type) {
-			// A lobby pick keeps the picker's place, such as a resumed episode.
+		if (newTitle) {
+			// A pick keeps the picker's place, such as a resumed episode.
 			room.position =
-				next && !room.media && typeof body.position === "number"
-					? body.position
-					: 0;
+				next && typeof body.position === "number" ? body.position : 0;
 			room.requestedPlaying = !!next;
 		}
 		room.media = next;
@@ -368,9 +383,7 @@ export class WatchRooms {
 			return;
 		}
 		if (body.action === "heartbeat") {
-			member.connected = member.listeners.size > 0;
-			member.ready = member.connected && body.ready === true;
-			this.update(room);
+			this.heartbeat(room, member, body.ready === true);
 			return;
 		}
 		if (body.action === "leave") {

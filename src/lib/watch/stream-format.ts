@@ -371,7 +371,9 @@ export function pickPreferredStream(
 	preferred: string,
 	searching = false,
 ): ResolvedStream | null {
-	if (searching) return null;
+	if (searching) {
+		return null;
+	}
 	const playable = streams.filter(isPlayable);
 	if (playable.length === 0) {
 		return streams[0] ?? null;
@@ -382,13 +384,15 @@ export function pickPreferredStream(
 	if (target === undefined) {
 		const safe = playable.filter((stream) => audioSupport(stream) === "ok");
 		const candidates = safe.length > 0 ? safe : playable;
-		return candidates
-			.map((stream, order) => ({
-				stream,
-				order,
-				rank: QUALITY_RANK[streamQuality(stream) ?? ""] ?? -1,
-			}))
-			.sort((a, b) => b.rank - a.rank || a.order - b.order)[0]?.stream ?? null;
+		return (
+			candidates
+				.map((stream, order) => ({
+					stream,
+					order,
+					rank: QUALITY_RANK[streamQuality(stream) ?? ""] ?? -1,
+				}))
+				.sort((a, b) => b.rank - a.rank || a.order - b.order)[0]?.stream ?? null
+		);
 	}
 
 	// Rank by quality closeness first, then by audio safety, then by input order.
@@ -405,4 +409,35 @@ export function pickPreferredStream(
 			a.order - b.order,
 	);
 	return scored[0]?.stream ?? playable[0];
+}
+
+/** How long discovery may hold back a good-enough source. */
+export const EARLY_PICK_MS = 6000;
+
+/**
+ * Discovery runs every provider and can take a minute or more. While it runs,
+ * start on the best source so far once it has browser-safe audio and either
+ * meets the quality preference (1080p or better for `"auto"`) or has waited
+ * `patienceMs`. `immediate: false` always waits out the patience.
+ */
+export function earlyStream(
+	streams: ResolvedStream[],
+	preferred: string,
+	options: { waitedMs: number; patienceMs?: number; immediate?: boolean },
+): ResolvedStream | null {
+	const best = pickPreferredStream(streams, preferred);
+	if (!(best && isPlayable(best)) || audioSupport(best) !== "ok") {
+		return null;
+	}
+	if (options.waitedMs >= (options.patienceMs ?? EARLY_PICK_MS)) {
+		return best;
+	}
+	if (options.immediate === false) {
+		return null;
+	}
+	const target = QUALITY_RANK[preferred];
+	const rank = QUALITY_RANK[streamQuality(best) ?? ""] ?? -1;
+	const meetsPreference =
+		target === undefined ? rank >= QUALITY_RANK["1080p"] : rank === target;
+	return meetsPreference ? best : null;
 }

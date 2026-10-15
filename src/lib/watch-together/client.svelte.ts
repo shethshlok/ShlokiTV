@@ -5,7 +5,12 @@ import { sharedAudioChoice } from "#lib/player/audio-language.js";
 import { openCamera, setTracks, WatchCall } from "./call.js";
 import { PlaybackReporter, type PlaybackSample } from "./diagnostics.js";
 import { loadMembership, saveMembership } from "./membership-store.js";
-import { hasPlaybackData, steadyReadiness, titleUpdate } from "./readiness.js";
+import {
+	hasPlaybackData,
+	sameTitle,
+	steadyReadiness,
+	titleUpdate,
+} from "./readiness.js";
 import {
 	type CallSignal,
 	type Membership,
@@ -65,6 +70,8 @@ class WatchTogether {
 	private retries = 0;
 	/** A player still open when the room went back to the lobby; it must not re-pick its title. */
 	private stale: HTMLVideoElement | null = null;
+	// Joining while another title plays: that player must not take the room over.
+	private joining = false;
 	get host() {
 		return !!this.membership && this.room?.host === this.membership.member;
 	}
@@ -194,6 +201,7 @@ class WatchTogether {
 	async join(code: string, name: string) {
 		await this.leave();
 		this.membership = await this.request({ action: "join", code, name });
+		this.joining = true;
 		saveMembership(this.membership);
 		this.connect();
 		this.panelOpen = true;
@@ -217,10 +225,7 @@ class WatchTogether {
 				return;
 			}
 			const changed = this.room?.revision !== room.revision;
-			if (this.room?.media && !room.media) {
-				this.stale = this.video;
-				this.stale?.pause();
-			}
+			this.retire(room, changed);
 			this.room = room;
 			if (
 				this.chosenAudio &&
@@ -434,6 +439,36 @@ class WatchTogether {
 		this.media = media;
 		this.tick();
 	}
+	/**
+	 * The room moved on (back to the lobby, or the other viewer picked another
+	 * title): the open player must not pick its old title back. Our own pick
+	 * can confirm after we already moved on, so it never retires us. A
+	 * reconnect (page load) is not a move: a newly opened title may pick.
+	 */
+	private retire(next: RoomSnapshot, changed: boolean) {
+		const left = !!this.room?.media && !next.media;
+		const moved = this.room ? changed : this.joining;
+		this.joining = false;
+		const replaced =
+			moved &&
+			!!next.media &&
+			!!this.media &&
+			next.host !== this.membership?.member &&
+			!sameTitle(this.media, next.media);
+		if (left || replaced) {
+			this.stale = this.video;
+			this.stale?.pause();
+		}
+	}
+	/** Anyone may pick a new title; only its picker refines it. */
+	private mayPick(room: RoomSnapshot, media: RoomMedia | null) {
+		return (
+			!this.pending &&
+			Date.now() - this.mediaSentAt > 3000 &&
+			this.video !== this.stale &&
+			(this.host || !(media && room.media && sameTitle(media, room.media)))
+		);
+	}
 	private tick() {
 		const room = this.room,
 			video = this.video,
@@ -441,18 +476,13 @@ class WatchTogether {
 		if (!(room && this.connected)) {
 			return;
 		}
-		const update =
-			!this.pending &&
-			Date.now() - this.mediaSentAt > 3000 &&
-			(room.media ? this.host : video !== this.stale) &&
-			titleUpdate(room, media, video);
+		const update = this.mayPick(room, media) && titleUpdate(room, media, video);
 		if (update) {
 			this.mediaSentAt = Date.now();
 			void this.command({ action: "media", ...update });
 			return;
 		}
-		const same =
-			!!media && media.id === room.media?.id && media.type === room.media.type;
+		const same = !!(media && room.media && sameTitle(media, room.media));
 		this.mismatch =
 			!!video &&
 			!!room.media &&

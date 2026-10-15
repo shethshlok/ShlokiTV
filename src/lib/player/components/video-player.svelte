@@ -74,11 +74,17 @@
 	let container = $state<HTMLDivElement | null>(null);
 	let video = $state<HTMLVideoElement | null>(null);
 
+	// The page hands over a fresh `watchMedia` object on every re-render;
+	// re-attaching would report "not ready" and flicker the room. Changes go
+	// through `updateMedia` below.
+	const watching = $derived(Boolean(watchMedia));
 	$effect(() => {
-		if (video && watchMedia) {
+		if (video && watching) {
 			const element = video;
-			const identity = watchMedia;
-			return untrack(() => together.attach(element, () => identity));
+			return untrack(() => {
+				const identity = watchMedia;
+				return identity ? together.attach(element, () => identity) : undefined;
+			});
 		}
 	});
 	$effect(() => {
