@@ -41,6 +41,7 @@
 		titleProgressFor,
 	} from "#lib/watch/playback-context.js";
 	import { parseRuntimeMs } from "#lib/watch/runtime.js";
+	import { sourceLoading } from "#lib/watch/source-loading.svelte.js";
 	import { sourcesPanel } from "#lib/watch/sources-panel.svelte.js";
 	import { resolveStreams } from "#lib/watch/watch.remote.js";
 	import { EMPTY_PROVIDERS } from "#lib/watch/watch-providers.js";
@@ -266,16 +267,26 @@
 	const ctaStreamCount = $derived(
 		ctaStreamsResult?.current?.streams.length ?? null,
 	);
+	const ctaSearch = sourceLoading(
+		() => ctaStreamsResult,
+		() => `${type}:${ctaVideoId}`,
+	);
 	// Fall back to the official source only once we know the addons came back empty.
 	const useOfficialCta = $derived(
-		ctaStreamCount === 0 && providers.stream.length > 0,
+		ctaStreamCount === 0 &&
+			!ctaSearch.searching &&
+			!ctaSearch.failed &&
+			!ctaStreamsResult?.current?.pending &&
+			providers.stream.length > 0,
 	);
 	const officialCta = $derived(providers.stream[0] ?? null);
-	// While `ctaStreamCount` is still `null` we don't yet know whether the
-	// primary CTA is "Watch" (an addon stream) or "Watch on <provider>" (an
-	// external hop) : hold the slot as a skeleton instead of showing one and
-	// silently swapping it a moment later.
-	const ctaPending = $derived(Boolean(ctaVideoId) && ctaStreamCount === null);
+	// An empty snapshot is provisional while discovery is running. Keep the
+	// loading state until a source arrives or discovery finishes.
+	const ctaPending = $derived(
+		Boolean(ctaVideoId) &&
+			(ctaStreamCount === null ||
+				(ctaStreamCount === 0 && ctaSearch.searching)),
+	);
 
 	function toggleWatched(
 		videoId: string,

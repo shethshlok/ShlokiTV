@@ -32,3 +32,6 @@ Apparence = "Apparence"
 trak = "trak"
 # The HTMLMediaElement event, in the watch-room playback listeners.
 seeked = "seeked"
+
+# The registered provider hostname torrentio.strem.fun.
+strem = "strem"

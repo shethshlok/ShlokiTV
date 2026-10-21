@@ -47,6 +47,11 @@
     <p class="line-clamp-2 text-xs font-medium leading-snug">
       {info.title}
     </p>
+    {#if row.title && row.title !== row.name && row.title !== info.title}
+      <p class="mt-1 line-clamp-3 whitespace-pre-line wrap-break-word text-xs leading-snug text-muted-foreground">
+        {row.title}
+      </p>
+    {/if}
 
     <div
       class="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] text-muted-foreground"

@@ -14,15 +14,22 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json
       - run: bun install --frozen-lockfile --ignore-scripts
       - run: bun run check
-      - run: bunx vitest run src/lib/watch-together src/lib/addons/client.test.ts src/lib/watch/source-loading.svelte.test.ts src/lib/watch/stream-format.test.ts src/lib/player/transmux-session.test.ts src/lib/player/transmux.test.ts src/lib/player/media.test.ts src/lib/player/audio-language.test.ts
+      - run:
+          bunx vitest run src/lib/watch-together src/lib/addons/client.test.ts
+          src/lib/watch/source-loading.svelte.test.ts
+          src/lib/watch/stream-format.test.ts
+          src/lib/player/transmux-session.test.ts
+          src/lib/player/transmux.test.ts src/lib/player/media.test.ts
+          src/lib/player/audio-language.test.ts
       - run: python3 scripts/update-next.test.py
       - run: node --check deployment/scraper-bridge/server.mjs
+      - run: node --test deployment/scraper-bridge/*.test.mjs
       - run: bash -n scripts/update-next.sh scripts/watchdog-next.sh
       - run: docker build -t shlokitv-check .
       - run: docker build -t shlokitv-bridge-check deployment/scraper-bridge

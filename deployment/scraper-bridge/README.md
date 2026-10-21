@@ -1,7 +1,7 @@
 # Native Nuvio scraper bridge
 
 Native engine included in the ShlokiTV web fork. Production at
-https://tv.shloksheth.tech uses this bridge with the new community UI.
+<https://tv.shloksheth.tech> uses this bridge with the new community UI.
 
 ## Behavior
 
@@ -14,11 +14,18 @@ https://tv.shloksheth.tech uses this bridge with the new community UI.
 - Stream links with unresolved/private hostnames or insecure HTTP are filtered
   before they enter source results. DNS checks are bounded and cached. This
   cannot guarantee that a resolvable host serves a valid video.
+- Valid native magnet results are converted to Stremio `infoHash` sources and
+  shown as P2P/external-player options. They do not play inside the browser.
 - Provider requests use a fixed HTTPS host allowlist and public-address DNS
   validation. Tokens are used only for the official Nuvio API.
+- `provider-hosts.mjs` carries reviewed provider domain updates with the
+  release; the private environment's host list extends it. Wildcard domains and
+  automatic approval of script-supplied hosts are not supported.
 - Starts the fastest previously working providers first; responds when the first
-  source is available, or after a 1.5-second snapshot wait after account validation. Other providers populate a
-  five-minute account/profile/config/title cache. searchPending tells the web UI to poll automatically for later results.
+  source is available, or after a 1.5-second snapshot wait after account
+  validation. Other providers populate a five-minute
+  account/profile/config/title cache. searchPending tells the web UI to poll
+  automatically for later results.
 - Search background budget is 90 seconds; unsupported or unavailable providers
   can produce no results. This does not guarantee every provider works.
 - Repository manifests and scripts are refreshed after a five-minute cache TTL.
@@ -30,18 +37,20 @@ cannot execute in this engine. Standard Stremio addons remain in the UI.
 Individual scraper toggles and custom scraper settings from the previous
 browser's local storage are not imported; this prototype uses script defaults.
 Provider domains added upstream need review and addition to the host allowlist.
-The UI requests an initial source snapshot; refresh can reveal additional cached
-sources. Playback, CORS and codec support still depend on each source/browser.
+The detail page, source drawer and player poll pending snapshots automatically.
+Playback, CORS and codec support still depend on each source/browser. Failed
+provider services, including stale upstream configuration URLs, can still return
+no sources even when their request hosts are approved.
 
 ## Attribution
 
-worker.mjs adapts the browser worker protocol to Node worker threads. The vendored
-worker, providerProxy.mjs and envProperties.mjs derive from GYK-Studio/NuvioWeb
-main ff5eb45 with the original local browser integration; see LICENSE.GYK.
-The vendored QuickJS browser bundle was copied from that same deployment and
-includes quickjs-emscripten. Preserve vendor license notices on redistribution.
-Actual provider scripts remain in their upstream repository and are fetched at
-runtime, not included in this checkout.
+worker.mjs adapts the browser worker protocol to Node worker threads. The
+vendored worker, providerProxy.mjs and envProperties.mjs derive from
+GYK-Studio/NuvioWeb main ff5eb45 with the original local browser integration;
+see LICENSE.GYK. The vendored QuickJS browser bundle was copied from that same
+deployment and includes quickjs-emscripten. Preserve vendor license notices on
+redistribution. Actual provider scripts remain in their upstream repository and
+are fetched at runtime, not included in this checkout.
 
 ## Checks completed
 
