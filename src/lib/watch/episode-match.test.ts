@@ -35,4 +35,11 @@ describe("namesRequestedEpisode", () => {
 	it("rejects the right episode number in the wrong season", () => {
 		expect(namesRequestedEpisode(id, ["Show S02E05 1080p"])).toBe(false);
 	});
+
+	it("keeps the requested episode for namespaced ids and rejects other episodes", () => {
+		expect(namesRequestedEpisode("tmdb:1695:2:5", ["Monk S02E05"])).toBe(true);
+		expect(namesRequestedEpisode("tmdb:1695:2:5", ["Monk S01E05"])).toBe(false);
+		expect(namesRequestedEpisode("kitsu:46474:5", ["Show S01E05"])).toBe(true);
+		expect(namesRequestedEpisode("kitsu:46474:5", ["Show S01E06"])).toBe(false);
+	});
 });

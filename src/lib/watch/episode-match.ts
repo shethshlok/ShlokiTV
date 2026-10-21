@@ -10,7 +10,10 @@ export function namesRequestedEpisode(
 	videoId: string,
 	texts: Array<string | null | undefined>,
 ): boolean {
-	const [, season, episode] = videoId.split(":").map(Number);
+	const parts = videoId.split(":");
+	const offset = /^[a-z]+$/i.test(parts[0]) ? 2 : 1;
+	const rest = parts.slice(offset).map(Number);
+	const [season, episode] = rest.length === 1 ? [1, rest[0]] : rest;
 	if (!(Number.isInteger(season) && Number.isInteger(episode))) {
 		return true;
 	}

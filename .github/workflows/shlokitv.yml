@@ -27,6 +27,9 @@ jobs:
           src/lib/player/transmux-session.test.ts
           src/lib/player/transmux.test.ts src/lib/player/media.test.ts
           src/lib/player/audio-language.test.ts
+          src/lib/player/startup-watchdog.test.ts
+          src/lib/player/hls-subtitle-recovery.test.ts
+          src/lib/watch/episode-match.test.ts src/lib/watch/watch.remote.test.ts
       - run: python3 scripts/update-next.test.py
       - run: node --check deployment/scraper-bridge/server.mjs
       - run: node --test deployment/scraper-bridge/*.test.mjs

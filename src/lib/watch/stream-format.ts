@@ -383,7 +383,16 @@ export function pickPreferredStream(
 
 	if (target === undefined) {
 		const safe = playable.filter((stream) => audioSupport(stream) === "ok");
-		const candidates = safe.length > 0 ? safe : playable;
+		const labelledSafe = safe.filter(
+			(stream) =>
+				SAFE_AUDIO.test(flatLabel(stream)) && videoSupport(stream) === "ok",
+		);
+		const candidates =
+			labelledSafe.length > 0
+				? labelledSafe
+				: safe.length > 0
+					? safe
+					: playable;
 		return (
 			candidates
 				.map((stream, order) => ({
@@ -439,5 +448,9 @@ export function earlyStream(
 	const rank = QUALITY_RANK[streamQuality(best) ?? ""] ?? -1;
 	const meetsPreference =
 		target === undefined ? rank >= QUALITY_RANK["1080p"] : rank === target;
-	return meetsPreference ? best : null;
+	// Give explicitly compatible sources a chance to arrive before locking an
+	// unlabelled high-resolution file into the player.
+	const compatible =
+		SAFE_AUDIO.test(flatLabel(best)) && videoSupport(best) === "ok";
+	return meetsPreference && compatible ? best : null;
 }

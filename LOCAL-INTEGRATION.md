@@ -93,6 +93,16 @@ empty result. Closing the drawer cancels its polling; the mounted player keeps
 its own discovery active. Fatal playback failures can try up to four alternative
 sources, ranked by the same quality preference.
 
+Automatic quality selection prefers sources explicitly labelled with browser
+audio codecs and no known video-codec risk. Explicit quality preferences retain
+their resolution choice. A source that supplies no first frame within 45 seconds
+enters the same bounded recovery path as a fatal playback error; later buffering
+and user pauses do not trigger this startup timeout.
+
+A fatal error loading an embedded HLS subtitle playlist disables that rendition
+and resumes video and audio. Some providers incorrectly point a subtitle
+playlist at a plain WebVTT file. Addon subtitles remain available independently.
+
 Known provider limits remain: a discovered link can be unavailable, unsupported,
 or a poor match for the requested title. Source discovery does not guarantee
 that every provider link plays the correct media.

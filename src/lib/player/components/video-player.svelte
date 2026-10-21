@@ -10,6 +10,7 @@
 		segmentChapters,
 	} from "#lib/player/chapters.js";
 	import { handlePlayerKey } from "#lib/player/keymap.js";
+	import { startupWatchdog } from "#lib/player/startup-watchdog.js";
 	import { createPlayerBroadcastSync } from "#lib/player/state/broadcast.svelte.js";
 	import { createPlayerController } from "#lib/player/state/controller.svelte.js";
 	import { createPlaybackDiagnostics } from "#lib/player/state/diagnostics.svelte.js";
@@ -95,6 +96,18 @@
 		}
 	});
 	let fatalError = $state<string | null>(null);
+	$effect(() => {
+		const element = video;
+		const source = src;
+		if (!(element && source && onSourceFailure)) {
+			return;
+		}
+		return startupWatchdog(element, () => {
+			if (src === source) {
+				fatalError = m.player_error_stream();
+			}
+		});
+	});
 	$effect(() => {
 		if (fatalError) {
 			onSourceFailure?.(src);

@@ -18,6 +18,11 @@ Native engine included in the ShlokiTV web fork. Production at
   have no torrent app. Direct HTTPS video sources remain available.
 - Provider requests use a fixed HTTPS host allowlist and public-address DNS
   validation. Tokens are used only for the official Nuvio API.
+- GET, POST and HEAD provider requests are supported, including Range requests
+  and file-length response headers. HEAD remains HEAD across redirects.
+- IMDb and TMDB episode identifiers retain their season and episode numbers.
+  Failed metadata lookups are evicted and reported as errors so the web client's
+  bounded retries can recover instead of caching a false empty search.
 - `provider-hosts.mjs` carries reviewed provider domain updates with the
   release; the private environment's host list extends it. Wildcard domains and
   automatic approval of script-supplied hosts are not supported.

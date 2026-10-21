@@ -2,6 +2,7 @@ import type Hls from "hls.js";
 import { untrack } from "svelte";
 import { m } from "#lib/i18n/index.js";
 import { preferredTrackIndex } from "#lib/player/audio-language.js";
+import { recoverSubtitleFailure } from "#lib/player/hls-subtitle-recovery.js";
 import {
 	type AudioTrackOption,
 	attachNativeAudioTracks,
@@ -68,6 +69,9 @@ function attachHls(el: HTMLVideoElement, src: string, hooks: AttachHooks) {
 			instance.loadSource(src);
 			instance.attachMedia(el);
 			instance.on(HlsClass.Events.ERROR, (_event, data) => {
+				if (recoverSubtitleFailure(instance, data)) {
+					return;
+				}
 				if (data.fatal) {
 					hooks.onFatal(m.player_error_stream());
 				}

@@ -243,6 +243,16 @@ describe("pickPreferredStream", () => {
 		];
 		expect(pickPreferredStream(opts, "auto")?.index).toBe(1);
 	});
+
+	it("auto prefers labelled browser codecs over higher-resolution unknown or risky files", () => {
+		const opts = [
+			stream({ index: 0, title: "Movie 4K" }),
+			stream({ index: 1, title: "Movie 4K HEVC AAC" }),
+			stream({ index: 2, title: "Movie 1080p H.264 AAC" }),
+		];
+		expect(pickPreferredStream(opts, "auto")?.index).toBe(2);
+		expect(pickPreferredStream(opts, "4K")?.index).toBe(0);
+	});
 });
 
 describe("earlyStream", () => {
@@ -262,6 +272,12 @@ describe("earlyStream", () => {
 
 	it("never starts early on audio the browser may not decode", () => {
 		expect(earlyStream([silent], "auto", { waitedMs: 60_000 })).toBeNull();
+	});
+
+	it("waits for the discovery grace period before committing to unknown codecs", () => {
+		const unknown = stream({ index: 3, title: "Show 1080p" });
+		expect(earlyStream([unknown], "auto", { waitedMs: 0 })).toBeNull();
+		expect(earlyStream([unknown], "auto", { waitedMs: 6000 })?.index).toBe(3);
 	});
 
 	it("lets a follower hold out for the picker's file", () => {

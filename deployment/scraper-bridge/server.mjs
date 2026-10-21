@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 import http from "node:http";
 import process from "node:process";
 import { Worker } from "node:worker_threads";
+import { sourceSnapshot } from "./discovery.mjs";
+import { lookup } from "./metadata.mjs";
 import { providerHosts } from "./provider-hosts.mjs";
 import { upstream } from "./providerProxy.mjs";
 import { normalizeSource, sourceKey } from "./streams.mjs";
@@ -161,37 +163,6 @@ function execute(code, scraper, args) {
 		});
 	});
 }
-async function lookup(type, id) {
-	const [base, season, episode] = id.split(":");
-	let tmdbId;
-	if (base === "tmdb") {
-		tmdbId = season;
-	} else if (/^\d+$/.test(base)) {
-		tmdbId = base;
-	} else {
-		if (!/^tt\d+$/.test(base)) {
-			throw new Error("Unsupported title ID");
-		}
-		const response = await fetch(
-			`https://v3-cinemeta.strem.io/meta/${type}/${base}.json`,
-			{ signal: AbortSignal.timeout(8000) },
-		);
-		if (!response.ok) {
-			throw new Error("Metadata unavailable");
-		}
-		const { meta } = await response.json();
-		tmdbId = meta?.moviedb_id;
-		if (!tmdbId) {
-			throw new Error("TMDB ID unavailable");
-		}
-	}
-	return {
-		tmdbId: String(tmdbId),
-		mediaType: type === "series" ? "tv" : "movie",
-		season: type === "series" ? Number(season || 1) : undefined,
-		episode: type === "series" ? Number(episode || 1) : undefined,
-	};
-}
 async function search(token, profileId, type, id) {
 	const user = await backend("/auth/v1/user", token);
 	const [profiles, owner] = await Promise.all([
@@ -236,7 +207,7 @@ async function search(token, profileId, type, id) {
 		cache.set(cacheKey, entry);
 		entry.promise = collect(enabled, type, id, entry)
 			.catch(() => {
-				/* A failed provider search leaves any discovered sources available. */
+				entry.failed = true;
 			})
 			.finally(() => {
 				entry.done = true;
@@ -247,10 +218,7 @@ async function search(token, profileId, type, id) {
 		// biome-ignore lint/performance/noAwaitInLoops: Poll only until the first snapshot deadline.
 		await new Promise((r) => setTimeout(r, 100));
 	}
-	return {
-		streams: entry.streams.slice(),
-		behaviorHints: { searchPending: !entry.done },
-	};
+	return sourceSnapshot(entry, () => cache.delete(cacheKey));
 }
 async function collect(rows, type, id, entry) {
 	const args = await lookup(type, id);
