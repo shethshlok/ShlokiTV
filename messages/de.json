@@ -18,13 +18,8 @@
 	"account_duration_minutes": "{minutes} Min.",
 	"account_episodes": [
 		{
-			"declarations": [
-				"input count",
-				"local countPlural = count: plural"
-			],
-			"selectors": [
-				"countPlural"
-			],
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "{count} Folge",
 				"countPlural=other": "{count} Folgen"
@@ -35,13 +30,8 @@
 	"account_finished": "abgeschlossen",
 	"account_history_count": [
 		{
-			"declarations": [
-				"input count",
-				"local countPlural = count: plural"
-			],
-			"selectors": [
-				"countPlural"
-			],
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "{count} Titel angesehen, neueste zuerst",
 				"countPlural=other": "{count} Titel angesehen, neueste zuerst"
@@ -83,13 +73,8 @@
 	"admin_back": "Zurück zu ShlokiTV",
 	"admin_chart_aria": [
 		{
-			"declarations": [
-				"input count",
-				"local countPlural = count: plural"
-			],
-			"selectors": [
-				"countPlural"
-			],
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "{label}: {total} an {count} Tag",
 				"countPlural=other": "{label}: {total} in den letzten {count} Tagen"
@@ -104,10 +89,7 @@
 				"local signInsPlural = signIns: plural",
 				"local peoplePlural = people: plural"
 			],
-			"selectors": [
-				"signInsPlural",
-				"peoplePlural"
-			],
+			"selectors": ["signInsPlural", "peoplePlural"],
 			"match": {
 				"signInsPlural=one, peoplePlural=one": "{day}: {signIns} Anmeldung, {people} Person",
 				"signInsPlural=one, peoplePlural=other": "{day}: {signIns} Anmeldung, {people} Personen",
@@ -118,13 +100,8 @@
 	],
 	"admin_chart_caption": [
 		{
-			"declarations": [
-				"input count",
-				"local countPlural = count: plural"
-			],
-			"selectors": [
-				"countPlural"
-			],
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "{label} · letzter {count} Tag",
 				"countPlural=other": "{label} · letzte {count} Tage"
@@ -152,10 +129,7 @@
 				"local addressesPlural = addresses: plural",
 				"local adminsPlural = admins: plural"
 			],
-			"selectors": [
-				"addressesPlural",
-				"adminsPlural"
-			],
+			"selectors": ["addressesPlural", "adminsPlural"],
 			"match": {
 				"addressesPlural=one, adminsPlural=one": "{addresses} Adresse zugelassen, plus {admins} Server-Admin.",
 				"addressesPlural=one, adminsPlural=other": "{addresses} Adresse zugelassen, plus {admins} Server-Admins.",
@@ -175,6 +149,7 @@
 	"admin_unlock": "Server entsperren",
 	"auth_create_account": "Konto erstellen",
 	"auth_create_an_account": "Konto erstellen",
+	"auth_credentials_note": "Dein Passwort wird nur einmal zur Anmeldung an Nuvio übermittelt und nie gespeichert. Dieser Server behält nur die Sitzung, die Nuvio zurückgibt.",
 	"auth_error_email_required": "Gib deine E-Mail-Adresse ein.",
 	"auth_error_email_taken": "Mit dieser E-Mail-Adresse gibt es bereits ein Konto.",
 	"auth_error_invalid_credentials": "E-Mail-Adresse oder Passwort ist falsch.",
@@ -221,13 +196,8 @@
 	"collections_empty_title": "Noch keine Sammlungen",
 	"collections_folder_count": [
 		{
-			"declarations": [
-				"input count",
-				"local countPlural = count: plural"
-			],
-			"selectors": [
-				"countPlural"
-			],
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "{count} Ordner",
 				"countPlural=other": "{count} Ordner"
@@ -384,13 +354,8 @@
 	"library_sort_rating": "Am besten bewertet",
 	"library_titles_saved": [
 		{
-			"declarations": [
-				"input count",
-				"local countPlural = count: plural"
-			],
-			"selectors": [
-				"countPlural"
-			],
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "{count} Titel gespeichert",
 				"countPlural=other": "{count} Titel gespeichert"
@@ -575,6 +540,7 @@
 	"settings_accent_neutral": "Neutral",
 	"settings_accent_rose": "Rosa",
 	"settings_accent_violet": "Violett",
+	"settings_account_description": "Profil, Passwort, Statistiken und Speicher",
 	"settings_addons_add": "Addon hinzufügen",
 	"settings_addons_added": "{name} hinzugefügt.",
 	"settings_addons_already_installed": "Dieses Addon ist bereits installiert.",
@@ -585,13 +551,8 @@
 	"settings_addons_browse_title": "Addons durchstöbern",
 	"settings_addons_catalog_count": [
 		{
-			"declarations": [
-				"input count",
-				"local countPlural = count: plural"
-			],
-			"selectors": [
-				"countPlural"
-			],
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "{count} Katalog",
 				"countPlural=other": "{count} Kataloge"
@@ -600,13 +561,8 @@
 	],
 	"settings_addons_catalog_count_exact": [
 		{
-			"declarations": [
-				"input count",
-				"local countPlural = count: plural"
-			],
-			"selectors": [
-				"countPlural"
-			],
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "{count} Katalog",
 				"countPlural=other": "{count} Kataloge"
@@ -630,13 +586,8 @@
 	"settings_addons_enable": "{name} aktivieren",
 	"settings_addons_errors": [
 		{
-			"declarations": [
-				"input count",
-				"local countPlural = count: plural"
-			],
-			"selectors": [
-				"countPlural"
-			],
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "{count} Addon konnte nicht geladen werden:",
 				"countPlural=other": "{count} Addons konnten nicht geladen werden:"
@@ -681,6 +632,8 @@
 	"settings_dark_dim_hint": "Sanftes Dunkelgrau",
 	"settings_dark_style": "Dunkler Stil",
 	"settings_dark_style_hint": "Gilt, wenn der aktive Modus dunkel ist.",
+	"settings_group_account": "Konto",
+	"settings_group_general": "Allgemein",
 	"settings_home_default_hint": "Die ersten {count} Kataloge in Addon-Reihenfolge werden angezeigt. Verschiebe oder verstecke beliebige, um deine eigene Anordnung zu erstellen.",
 	"settings_home_description": "Welche Kataloge deine Startseite zeigt und in welcher Reihenfolge. Wird in deinem Nuvio-Konto für diese Web-App gespeichert; Kataloge von später installierten Addons erscheinen am Ende, bis du sie verschiebst.",
 	"settings_home_empty": "Keines deiner Addons stellt bisher einen Katalog bereit.",
@@ -701,13 +654,8 @@
 	"settings_language_hint": "Wird in diesem Browser gespeichert. Eine Änderung lädt die Seite neu.",
 	"settings_link_cache_days": [
 		{
-			"declarations": [
-				"input count",
-				"local countPlural = count: plural"
-			],
-			"selectors": [
-				"countPlural"
-			],
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "{count} Tag",
 				"countPlural=other": "{count} Tage"
@@ -735,10 +683,16 @@
 	"settings_saved": "Gespeichert",
 	"settings_saving": "Wird gespeichert…",
 	"settings_section_addons": "Addons",
+	"settings_section_addons_description": "Addons installieren, sortieren und entfernen",
 	"settings_section_appearance": "Darstellung",
+	"settings_section_appearance_description": "Design, Akzentfarbe und Layout",
+	"settings_section_home_description": "Reihen und Kataloge auf der Startseite",
 	"settings_section_integrations": "Integrationen",
+	"settings_section_integrations_description": "TMDB, MDBList und weitere Metadatenquellen",
 	"settings_section_playback": "Wiedergabe",
+	"settings_section_playback_description": "Player, Untertitel, Quellen und Audio",
 	"settings_section_sync": "Synchronisierung",
+	"settings_section_sync_description": "Bibliothek und Fortschritt mit Nuvio synchronisieren",
 	"settings_sections_label": "Einstellungsbereiche",
 	"settings_subtitle_background": "Untertitelhintergrund",
 	"settings_subtitle_background_hint": "Eine dunkle Fläche hinter dem Text für bessere Lesbarkeit.",
@@ -753,22 +707,17 @@
 	"settings_sync_library_from": "Bibliothek von",
 	"settings_sync_progress_from": "Fortschritt von",
 	"shell_appearance": "Darstellung",
-	"shell_close_menu": "Menü schließen",
 	"shell_couldnt_load": "Konnte nicht geladen werden.",
 	"shell_footer_tagline": "Ein Web-Client für deine Nuvio-Bibliothek, Addons und Streams.",
 	"shell_install_app": "App installieren",
 	"shell_leave_settings": "Einstellungen verlassen",
 	"shell_logo_home": "ShlokiTV: Startseite",
-	"shell_menu": "Menü",
 	"shell_nav_main": "Hauptnavigation",
 	"shell_profile_menu": "Profilmenü",
 	"shell_retry": "Erneut versuchen",
 	"shell_skip_to_content": "Zum Inhalt springen",
 	"shell_support_nuvio": "Nuvio unterstützen",
 	"shell_switch_profile": "Profil wechseln",
-	"small_screen_after": "besser.",
-	"small_screen_before": "ShlokiTV ist für den Desktop gemacht. Auf dem Handy funktioniert die",
-	"small_screen_link": "Mobile-App",
 	"social_create": "Erstellen",
 	"social_name": "Name",
 	"subtitle_colour": "Untertitelfarbe {color}",
@@ -808,13 +757,8 @@
 	"watch_detail_watch": "Ansehen",
 	"watch_episode_count": [
 		{
-			"declarations": [
-				"input count",
-				"local countPlural = count: plural"
-			],
-			"selectors": [
-				"countPlural"
-			],
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "{count} Folge",
 				"countPlural=other": "{count} Folgen"
@@ -832,13 +776,8 @@
 	"watch_filter_quality": "Qualität",
 	"watch_filter_show_silent": [
 		{
-			"declarations": [
-				"input count",
-				"local countPlural = count: plural"
-			],
-			"selectors": [
-				"countPlural"
-			],
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "{count} Quelle vermutlich ohne Ton anzeigen",
 				"countPlural=other": "{count} Quellen vermutlich ohne Ton anzeigen"
@@ -862,13 +801,8 @@
 	"watch_mark_up_to_here": "Bis hier als gesehen markieren",
 	"watch_marked_episodes": [
 		{
-			"declarations": [
-				"input count",
-				"local countPlural = count: plural"
-			],
-			"selectors": [
-				"countPlural"
-			],
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "{count} Folge als gesehen markiert",
 				"countPlural=other": "{count} Folgen als gesehen markiert"
@@ -909,13 +843,8 @@
 	"watch_finding_best_stream": "Bester verfügbarer Stream wird gesucht…",
 	"watch_sources_hidden": [
 		{
-			"declarations": [
-				"input count",
-				"local countPlural = count: plural"
-			],
-			"selectors": [
-				"countPlural"
-			],
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": "{count} Quelle ausgeblendet",
 				"countPlural=other": "{count} Quellen ausgeblendet"
@@ -929,13 +858,8 @@
 	"watch_up_next": "Als Nächstes",
 	"watch_watched_suffix": [
 		{
-			"declarations": [
-				"input count",
-				"local countPlural = count: plural"
-			],
-			"selectors": [
-				"countPlural"
-			],
+			"declarations": ["input count", "local countPlural = count: plural"],
+			"selectors": ["countPlural"],
 			"match": {
 				"countPlural=one": " · {count} gesehen",
 				"countPlural=other": " · {count} gesehen"

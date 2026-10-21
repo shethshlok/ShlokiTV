@@ -1,10 +1,24 @@
 # Changelog
 
+## [1.0.23](https://github.com/orochibraru/nuvio-web/compare/v1.0.22...v1.0.23) (2026-10-21)
+
+### Features
+
+* **mobile:** app-style mobile experience, touch player, theme fix (#42) ([8479e69](https://github.com/orochibraru/nuvio-web/commit/8479e691e87b4296e5e484c65c929acc7616e503))
+
+### Documentation
+
+* **changelog:** list #39 under 1.0.22 ([a7c613c](https://github.com/orochibraru/nuvio-web/commit/a7c613c7cc879bf5299d793c40c380f4bcbdac6d))
+
 ## [1.0.22](https://github.com/orochibraru/nuvio-web/compare/v1.0.21...v1.0.22) (2026-10-20)
 
 ### Features
 
 * **player:** send a User-Agent to TheIntroDB (#38) ([6bc2a40](https://github.com/orochibraru/nuvio-web/commit/6bc2a4041047f7180fb2084e510dee6563166ed0))
+
+### Bug Fixes
+
+* name every continue-watching card, tooltip the player's icon buttons (#39) ([4654aa4](https://github.com/orochibraru/nuvio-web/commit/4654aa433091749e1da0e4b26fd5f5060f493a46))
 
 ## [1.0.21](https://github.com/orochibraru/nuvio-web/compare/v1.0.20...v1.0.21) (2026-10-18)
 
