@@ -1,39 +1,7 @@
 import { sourceIsUsable } from "./source-validation.mjs";
 
-const INFO_HASH = /^(?:[a-f0-9]{40}|[a-z2-7]{32})$/i;
-
-// The Stremio contract represents torrents as infoHash, not as an HTTP URL.
-// The existing UI then offers a torrent-app handoff rather than browser play.
-function validHash(value) {
-	return typeof value === "string" && INFO_HASH.test(value)
-		? value.toLowerCase()
-		: null;
-}
-
-async function sourceAddress(result, usable) {
-	if (typeof result.url !== "string") {
-		const infoHash = validHash(result.infoHash);
-		return infoHash ? { infoHash } : null;
-	}
-	let parsed;
-	try {
-		parsed = new URL(result.url);
-	} catch {
-		return null;
-	}
-	if (parsed.protocol === "magnet:") {
-		const hash = parsed.searchParams
-			.getAll("xt")
-			.find((value) => /^urn:btih:/i.test(value))
-			?.slice(9);
-		const infoHash = validHash(hash);
-		return infoHash ? { infoHash } : null;
-	}
-	return (await usable(result.url)) ? { url: result.url } : null;
-}
-
-function sourceHints(result, address) {
-	const hints = address.infoHash ? { notWebReady: true } : {};
+function sourceHints(result) {
+	const hints = {};
 	if (result.headers && typeof result.headers === "object") {
 		hints.proxyHeaders = { request: result.headers };
 	}
@@ -54,16 +22,16 @@ export async function normalizeSource(
 	if (!result || typeof result !== "object") {
 		return null;
 	}
-	const address = await sourceAddress(result, usable);
-	if (!address) {
+	if (
+		typeof result.url !== "string" ||
+		!result.url.startsWith("https://") ||
+		!(await usable(result.url))
+	) {
 		return null;
 	}
-	const hints = sourceHints(result, address);
+	const hints = sourceHints(result);
 	return {
-		...address,
-		...(Number.isInteger(result.fileIdx) && result.fileIdx >= 0
-			? { fileIdx: result.fileIdx }
-			: {}),
+		url: result.url,
 		name: result.name || scraper.name || scraper.id,
 		title: result.title || result.quality || scraper.name,
 		...(typeof result.description === "string"
@@ -74,5 +42,5 @@ export async function normalizeSource(
 }
 
 export function sourceKey(stream) {
-	return stream.url || `${stream.infoHash}:${stream.fileIdx ?? ""}`;
+	return stream.url;
 }

@@ -68,6 +68,15 @@ describe("resolveStreams", () => {
 					infoHash: "y",
 					behaviorHints: { notWebReady: true },
 				},
+				{
+					infoHash: "0123456789abcdef0123456789abcdef01234567",
+					addonName: "Torrent only",
+				},
+				{
+					url: "https://cdn/resolved.mp4",
+					addonName: "Resolved video",
+					infoHash: "0123456789abcdef0123456789abcdef01234567",
+				},
 			],
 			errors: [{ addonName: "Broken", message: "timeout" }],
 		}));
@@ -82,12 +91,10 @@ describe("resolveStreams", () => {
 			fileSize: 1234,
 			filename: "A.1080p.mkv",
 		});
+		expect(out.streams).toHaveLength(2);
 		expect(out.streams[1]).toMatchObject({
-			index: 1,
-			url: null, // magnet
-			notWebReady: true,
-			infoHash: "y",
-			fileSize: null,
+			url: "https://cdn/resolved.mp4",
+			addonName: "Resolved video",
 		});
 		expect(out.errors).toEqual([{ addonName: "Broken", message: "timeout" }]);
 	});

@@ -21,7 +21,6 @@ const reviewedHosts = [
 	"new3.moviesdrive.beer",
 	"panel.watchkaroabhi.com",
 	"persianstremio.vercel.app",
-	"torrentio.strem.fun",
 	"uhdmovies.us.org",
 ];
 

@@ -80,17 +80,17 @@ The bridge returns `searchPending` while providers are running. The UI keeps
 showing loading for early empty snapshots and polls every two seconds while
 mounted, including on the detail page before the source drawer is opened. The
 official-provider fallback waits for a completed empty search. The drawer shows
-all discovered sources by default, including native magnet results as external
-torrent-app options, and audio-risk and external-player options, and
-distinguishes filtered counts from total results. Available sources remain
-usable as later batches arrive. Automatic playback waits for discovery, then
-selects the highest resolution with browser-friendly audio. An explicit quality
-preference selects the closest match. Manual choices stay fixed while the player
-continues collecting later results in the background. Discovery stops after two
-minutes; already available sources remain selectable. Empty failed requests
-receive bounded retries and an error screen rather than a false empty result.
-Closing the drawer cancels its polling; the mounted player keeps its own
-discovery active. Fatal playback failures can try up to four alternative
+HTTP video sources by default, including audio-risk and external-player options,
+and distinguishes filtered counts from total results. Magnet and infoHash-only
+results are omitted because client devices have no torrent app. Available
+sources remain usable as later batches arrive. Automatic playback waits for
+discovery, then selects the highest resolution with browser-friendly audio. An
+explicit quality preference selects the closest match. Manual choices stay fixed
+while the player continues collecting later results in the background. Discovery
+stops after two minutes; already available sources remain selectable. Empty
+failed requests receive bounded retries and an error screen rather than a false
+empty result. Closing the drawer cancels its polling; the mounted player keeps
+its own discovery active. Fatal playback failures can try up to four alternative
 sources, ranked by the same quality preference.
 
 Known provider limits remain: a discovered link can be unavailable, unsupported,

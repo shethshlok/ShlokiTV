@@ -14,8 +14,8 @@ Native engine included in the ShlokiTV web fork. Production at
 - Stream links with unresolved/private hostnames or insecure HTTP are filtered
   before they enter source results. DNS checks are bounded and cached. This
   cannot guarantee that a resolvable host serves a valid video.
-- Valid native magnet results are converted to Stremio `infoHash` sources and
-  shown as P2P/external-player options. They do not play inside the browser.
+- Native magnet and infoHash-only results are omitted because client devices
+  have no torrent app. Direct HTTPS video sources remain available.
 - Provider requests use a fixed HTTPS host allowlist and public-address DNS
   validation. Tokens are used only for the official Nuvio API.
 - `provider-hosts.mjs` carries reviewed provider domain updates with the

@@ -48,6 +48,9 @@ export const resolveStreams = query(
 					infoHash: stream.infoHash ?? null,
 					filename: stream.behaviorHints?.filename ?? null,
 				}))
+				// Client devices have no torrent app. Keep HTTP sources, including
+				// debrid-resolved video, and omit magnet/infoHash-only results.
+				.filter((stream) => stream.url !== null || stream.externalUrl !== null)
 				.filter((stream) =>
 					namesRequestedEpisode(id, [
 						stream.name,
