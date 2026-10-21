@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.0.22](https://github.com/orochibraru/nuvio-web/compare/v1.0.21...v1.0.22) (2026-10-20)
+
+### Features
+
+* **player:** send a User-Agent to TheIntroDB (#38) ([6bc2a40](https://github.com/orochibraru/nuvio-web/commit/6bc2a4041047f7180fb2084e510dee6563166ed0))
+
+## [1.0.21](https://github.com/orochibraru/nuvio-web/compare/v1.0.20...v1.0.21) (2026-10-18)
+
+### Bug Fixes
+
+* **player:** move TheIntroDB client to API v4 ([536dfb8](https://github.com/orochibraru/nuvio-web/commit/536dfb86c782079e9266d9dc1d68fb69326b3fef))
+
+## [1.0.20](https://github.com/orochibraru/nuvio-web/compare/v1.0.19...v1.0.20) (2026-10-15)
+
+### Bug Fixes
+
+* **player:** keep the center channel when downmixing, honour original audio, read stz2 and edit lists ([9011d5a](https://github.com/orochibraru/nuvio-web/commit/9011d5a5f7c8f1ba65cc3d02b98e76f2968c08c8))
+
 ## [1.0.19](https://github.com/orochibraru/nuvio-web/compare/v1.0.18...v1.0.19) (2026-10-13)
 
 ### Features
