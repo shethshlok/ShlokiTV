@@ -133,6 +133,46 @@ afterEach(() => {
 });
 
 describe("getRegistry", () => {
+	it("shares one build across concurrent requests for the same account and profile", async () => {
+		const results = await Promise.all([
+			getRegistry(),
+			getRegistry(),
+			getRegistry(),
+		]);
+		expect(state.list).toHaveBeenCalledTimes(1);
+		expect(state.manifest).toHaveBeenCalledTimes(1);
+		expect(results[0].registry).toBe(results[1].registry);
+	});
+
+	it("does not cache an old build that finishes after an addon edit", async () => {
+		let finish!: (rows: unknown[]) => void;
+		state.list = vi.fn(
+			() =>
+				new Promise<unknown[]>((resolve) => {
+					finish = resolve;
+				}),
+		);
+		const old = getRegistry();
+		invalidateRegistry();
+		state.list = vi.fn(async () => [row("https://new.example/manifest.json")]);
+		const fresh = await getRegistry();
+		finish([row("https://old.example/manifest.json")]);
+		await old;
+		expect((await getRegistry()).registry).toBe(fresh.registry);
+		expect(fresh.registry.addons[0].url).toBe(
+			"https://new.example/manifest.json",
+		);
+	});
+
+	it("allows a new build after a rejected request", async () => {
+		state.list = vi.fn(async () => {
+			throw new Error("Account unavailable");
+		});
+		await expect(getRegistry()).rejects.toThrow("Account unavailable");
+		state.list = vi.fn(async () => [row()]);
+		expect((await getRegistry()).registry.addons).toHaveLength(1);
+	});
+
 	it("builds the registry from the profile's addon rows", async () => {
 		const { registry, errors } = await getRegistry();
 		expect(errors).toEqual([]);

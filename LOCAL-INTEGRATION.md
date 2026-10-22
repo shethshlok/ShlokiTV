@@ -76,6 +76,16 @@ never resolved by discarding our changes.
 
 ## Playback behavior
 
+Concurrent requests from the detail page, drawer and player share an addon
+registry build for the same account and profile. Editing addons invalidates both
+the cached registry and any ongoing build, so an older build cannot replace the
+new configuration. Repository manifests download alongside title metadata, and
+ready repositories start their providers without waiting for slower
+repositories. Provider priority applies within each repository under the shared
+worker limit. Each source appears as soon as its destination check passes,
+without waiting for other links from that provider. Later sources append without
+changing the positions of existing choices.
+
 The bridge returns `searchPending` while providers are running. The UI keeps
 showing loading for early empty snapshots and polls every two seconds while
 mounted, including on the detail page before the source drawer is opened. The

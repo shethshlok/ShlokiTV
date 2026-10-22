@@ -2,10 +2,67 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { providerHosts } from "./provider-hosts.mjs";
 import { validateTarget } from "./providerProxy.mjs";
-import { normalizeSource } from "./streams.mjs";
+import { collectSources, normalizeSource } from "./streams.mjs";
 
 const scraper = { id: "fixture", name: "Fixture provider" };
 const hash = "0123456789abcdef0123456789abcdef01234567";
+
+test("publishes usable links before another source's DNS check finishes", async () => {
+	let finish;
+	const slow = new Promise((resolve) => {
+		finish = resolve;
+	});
+	const streams = [];
+	const fastUrl = "https://fast.example/video.mp4";
+	const search = collectSources(
+		[
+			{ url: "https://slow.example/video.mp4" },
+			{ url: fastUrl },
+			{ url: fastUrl },
+			{ url: `magnet:?xt=urn:btih:${hash}` },
+		],
+		scraper,
+		streams,
+		(url) => (url.includes("slow.example") ? slow : Promise.resolve(true)),
+	);
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.deepEqual(
+		streams.map((stream) => stream.url),
+		[fastUrl],
+	);
+	finish(false);
+	await search;
+	assert.deepEqual(
+		streams.map((stream) => stream.url),
+		[fastUrl],
+	);
+});
+
+test("adds later validated links once without replacing existing source positions", async () => {
+	let finish;
+	const slow = new Promise((resolve) => {
+		finish = resolve;
+	});
+	const firstUrl = "https://first.example/video.mp4";
+	const laterUrl = "https://later.example/video.mp4";
+	const existing = { url: firstUrl, name: "Existing choice" };
+	const streams = [existing];
+	const search = collectSources(
+		[{ url: firstUrl }, { url: laterUrl }, { url: laterUrl }],
+		scraper,
+		streams,
+		(url) => (url === laterUrl ? slow : Promise.resolve(true)),
+	);
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.deepEqual(streams, [existing]);
+	finish(true);
+	await search;
+	assert.equal(streams[0], existing);
+	assert.deepEqual(
+		streams.map((stream) => stream.url),
+		[firstUrl, laterUrl],
+	);
+});
 
 test("excludes native torrent results that require a client torrent app", async () => {
 	await Promise.all(

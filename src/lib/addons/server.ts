@@ -1,5 +1,4 @@
 import { requireProfile } from "#lib/server/guards.js";
-import { scraperAddon, scraperFetch } from "./scraper-bridge.server.ts";
 import { LOGGER } from "#lib/services/index.js";
 import { pullHomeLayout } from "#lib/settings/settings-data.js";
 import { getRequestEvent } from "$app/server";
@@ -10,6 +9,7 @@ import {
 	type AddonRegistry,
 	buildRegistry,
 } from "./registry.ts";
+import { scraperAddon, scraperFetch } from "./scraper-bridge.server.ts";
 import type { Meta, MetaPreview } from "./types.ts";
 
 export { requireProfile };
@@ -39,6 +39,13 @@ const cache = new Map<
 	string,
 	{ at: number; registry: AddonRegistry; errors: AddonLoadError[] }
 >();
+const building = new Map<
+	string,
+	Promise<{
+		registry: AddonRegistry;
+		errors: AddonLoadError[];
+	}>
+>();
 
 export async function getRegistry(): Promise<{
 	registry: AddonRegistry;
@@ -59,11 +66,29 @@ export async function getRegistry(): Promise<{
 	if (hit && Date.now() - hit.at < ttl) {
 		return { registry: hit.registry, errors: hit.errors };
 	}
-	const rows = await event.locals.nuvio.addons.list(profileId);
-	const built = await buildRegistry([...rows, ...scraperAddon()], scraperFetch());
-	pruneExpired();
-	cache.set(key, { at: Date.now(), ...built });
-	return built;
+	const pending = building.get(key);
+	if (pending) {
+		return pending;
+	}
+	const fetchImpl = scraperFetch();
+	const request = (async () => {
+		const rows = await event.locals.nuvio.addons.list(profileId);
+		return buildRegistry([...rows, ...scraperAddon()], fetchImpl);
+	})();
+	building.set(key, request);
+	try {
+		const built = await request;
+		// An addon edit may have invalidated this build while it was running.
+		if (building.get(key) === request) {
+			pruneExpired();
+			cache.set(key, { at: Date.now(), ...built });
+		}
+		return built;
+	} finally {
+		if (building.get(key) === request) {
+			building.delete(key);
+		}
+	}
 }
 
 /**
@@ -90,6 +115,7 @@ export function invalidateRegistry(): void {
 	const profileId = event.locals.profileId;
 	if (userId && profileId != null) {
 		cache.delete(cacheKey(userId, profileId));
+		building.delete(cacheKey(userId, profileId));
 	}
 }
 

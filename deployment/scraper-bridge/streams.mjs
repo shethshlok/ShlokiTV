@@ -44,3 +44,24 @@ export async function normalizeSource(
 export function sourceKey(stream) {
 	return stream.url;
 }
+
+// Publish each checked link as soon as it is ready. A slow DNS lookup for
+// another link from the same provider must not delay already usable sources.
+export async function collectSources(
+	results,
+	scraper,
+	streams,
+	usable = sourceIsUsable,
+) {
+	await Promise.all(
+		results.map(async (result) => {
+			const stream = await normalizeSource(result, scraper, usable);
+			if (
+				stream &&
+				!streams.some((item) => sourceKey(item) === sourceKey(stream))
+			) {
+				streams.push(stream);
+			}
+		}),
+	);
+}

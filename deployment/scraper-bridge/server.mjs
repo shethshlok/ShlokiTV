@@ -6,7 +6,8 @@ import { sourceSnapshot } from "./discovery.mjs";
 import { lookup } from "./metadata.mjs";
 import { providerHosts } from "./provider-hosts.mjs";
 import { upstream } from "./providerProxy.mjs";
-import { normalizeSource, sourceKey } from "./streams.mjs";
+import { collectRepositories } from "./repositories.mjs";
+import { collectSources } from "./streams.mjs";
 
 const api = process.env.NUVIO_SUPABASE_URL;
 const key = process.env.NUVIO_SUPABASE_ANON_KEY;
@@ -221,33 +222,12 @@ async function search(token, profileId, type, id) {
 	return sourceSnapshot(entry, () => cache.delete(cacheKey));
 }
 async function collect(rows, type, id, entry) {
-	const args = await lookup(type, id);
-	const manifests = await Promise.allSettled(
-		rows.map(async (r) => ({
-			url: r.url,
-			manifest: JSON.parse(await github(r.url)),
-		})),
-	);
-	const scrapers = manifests
-		.filter((r) => r.status === "fulfilled")
-		.flatMap((r) =>
-			(r.value.manifest.scrapers || [])
-				.filter(
-					(s) =>
-						s.enabled !== false &&
-						(!s.supportedTypes || s.supportedTypes.includes(args.mediaType)),
-				)
-				.map((s) => ({ ...s, codeUrl: new URL(s.filename, r.value.url).href })),
-		);
-	const priority = ["castle", "desiflix", "movieblast"];
-	scrapers.sort(
-		(a, b) =>
-			(priority.indexOf(a.id) < 0 ? 99 : priority.indexOf(a.id)) -
-			(priority.indexOf(b.id) < 0 ? 99 : priority.indexOf(b.id)),
-	);
 	const deadline = Date.now() + 90_000;
-	await Promise.allSettled(
-		scrapers.map((scraper) =>
+	const providers = await collectRepositories(
+		rows,
+		lookup(type, id),
+		github,
+		(scraper, args) =>
 			slot(async () => {
 				if (Date.now() > deadline) {
 					return;
@@ -257,23 +237,11 @@ async function collect(rows, type, id, entry) {
 					scraper,
 					args,
 				);
-				const streams = await Promise.all(
-					results.map((result) => normalizeSource(result, scraper)),
-				);
-				for (const stream of streams) {
-					if (
-						!stream ||
-						entry.streams.some((s) => sourceKey(s) === sourceKey(stream))
-					) {
-						continue;
-					}
-					entry.streams.push(stream);
-				}
+				await collectSources(results, scraper, entry.streams);
 			}),
-		),
 	);
 	process.stdout.write(
-		`${JSON.stringify({ event: "search_completed", providers: scrapers.length, streams: entry.streams.length })}\n`,
+		`${JSON.stringify({ event: "search_completed", providers, streams: entry.streams.length })}\n`,
 	);
 }
 const manifest = {

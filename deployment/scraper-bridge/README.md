@@ -31,6 +31,12 @@ Native engine included in the ShlokiTV web fork. Production at
   validation. Other providers populate a five-minute
   account/profile/config/title cache. searchPending tells the web UI to poll
   automatically for later results.
+- Downloads repository manifests alongside title metadata. Each ready repository
+  starts its providers independently, so an unavailable repository cannot delay
+  working ones. Provider priority applies within each repository, and all
+  repositories share the same four-worker limit.
+- Publishes each source as soon as its destination check passes. A slow DNS
+  lookup for another link cannot hold back links that have already passed.
 - Search background budget is 90 seconds; unsupported or unavailable providers
   can produce no results. This does not guarantee every provider works.
 - Repository manifests and scripts are refreshed after a five-minute cache TTL.
